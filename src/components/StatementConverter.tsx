@@ -1,0 +1,263 @@
+
+"use client";
+
+import { useState, useRef, useTransition, type DragEvent } from "react";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import {
+  UploadCloud,
+  FileText,
+  Download,
+  Loader2,
+  AlertTriangle,
+  CheckCircle2,
+} from "lucide-react";
+import { convertPdf } from "@/lib/actions";
+
+type Status = "idle" | "file-selected" | "processing" | "success" | "error";
+
+export function StatementConverter() {
+  const [status, setStatus] = useState<Status>("idle");
+  const [file, setFile] = useState<File | null>(null);
+  const [convertedData, setConvertedData] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isPending, startTransition] = useTransition();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const handleFileChange = (selectedFile: File | null) => {
+    if (selectedFile) {
+      if (selectedFile.type !== "application/pdf") {
+        toast({
+          variant: "destructive",
+          title: "Invalid File Type",
+          description: "Please upload a PDF file.",
+        });
+        return;
+      }
+      setFile(selectedFile);
+      setStatus("file-selected");
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFileChange(e.target.files?.[0] ?? null);
+  };
+  
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const droppedFile = e.dataTransfer.files?.[0] ?? null;
+    handleFileChange(droppedFile);
+  };
+
+  const handleConvert = () => {
+    if (!file) return;
+
+    startTransition(async () => {
+      setStatus("processing");
+      setErrorMessage("");
+
+      try {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+          const pdfDataUri = reader.result as string;
+          try {
+            const result = await convertPdf({ pdfDataUri });
+            if (!result || !result.standardizedData) {
+              throw new Error("Conversion returned no data.");
+            }
+            setConvertedData(result.standardizedData);
+            setStatus("success");
+            toast({
+              variant: "default",
+              className: "bg-accent text-accent-foreground",
+              title: "Conversion Successful",
+              description: "Your file is ready for download.",
+            });
+          } catch (error) {
+            console.error(error);
+            const message = error instanceof Error ? error.message : "An unknown error occurred during conversion.";
+            setErrorMessage(message);
+            setStatus("error");
+            toast({
+              variant: "destructive",
+              title: "Conversion Failed",
+              description: message,
+            });
+          }
+        };
+        reader.onerror = () => {
+          const message = "Failed to read the file. Please try again.";
+          setErrorMessage(message);
+          setStatus("error");
+          toast({
+            variant: "destructive",
+            title: "File Read Error",
+            description: message,
+          });
+        };
+      } catch (error) {
+        const message = "An unexpected error occurred. Please try again.";
+        setErrorMessage(message);
+        setStatus("error");
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: message,
+        });
+      }
+    });
+  };
+
+  const handleDownload = () => {
+    const blob = new Blob([convertedData], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    const fileName = file?.name.replace(/\.pdf$/i, ".csv") || "converted_statement.csv";
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleReset = () => {
+    setStatus("idle");
+    setFile(null);
+    setConvertedData("");
+    setErrorMessage("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+  
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  const renderContent = () => {
+    switch (status) {
+      case "processing":
+        return (
+          <div className="flex flex-col items-center justify-center text-center p-10">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="mt-4 font-medium text-lg">Processing Statement...</p>
+            <p className="text-muted-foreground">AI is extracting and formatting your data. Please wait.</p>
+          </div>
+        );
+      case "success":
+        return (
+          <div className="flex flex-col items-center justify-center text-center p-6">
+            <CheckCircle2 className="h-12 w-12 text-accent-foreground" />
+            <p className="mt-4 font-medium text-lg">Conversion Successful!</p>
+            <p className="text-muted-foreground mb-4">Preview your data below and download the CSV file.</p>
+            <Textarea
+              readOnly
+              value={convertedData}
+              className="my-4 h-48 w-full resize-none bg-muted font-mono text-xs"
+              placeholder="Converted data preview..."
+            />
+            <div className="flex gap-4">
+                <Button onClick={handleReset} variant="outline">Convert Another File</Button>
+                <Button onClick={handleDownload} className="bg-accent text-accent-foreground hover:bg-accent/90">
+                  <Download className="mr-2 h-4 w-4" />
+                  Download CSV
+                </Button>
+            </div>
+          </div>
+        );
+      case "error":
+        return (
+          <div className="flex flex-col items-center justify-center text-center p-10">
+            <AlertTriangle className="h-12 w-12 text-destructive" />
+            <p className="mt-4 font-medium text-lg">Conversion Failed</p>
+            <p className="text-muted-foreground mb-4 max-w-sm">{errorMessage}</p>
+            <Button onClick={handleReset} variant="destructive">
+              Try Again
+            </Button>
+          </div>
+        );
+      case "file-selected":
+        return (
+          <div className="flex flex-col items-center justify-center text-center p-10">
+            <FileText className="h-12 w-12 text-primary" />
+            <p className="mt-4 font-medium">{file?.name}</p>
+            {file && <p className="text-sm text-muted-foreground">{formatFileSize(file.size)}</p>}
+            <div className="flex gap-4 mt-6">
+                <Button onClick={handleReset} variant="outline">Change File</Button>
+                <Button onClick={handleConvert} disabled={isPending}>
+                  {isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Converting...
+                    </>
+                  ) : (
+                    "Convert to CSV"
+                  )}
+                </Button>
+            </div>
+          </div>
+        );
+      case "idle":
+      default:
+        return (
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`flex flex-col items-center justify-center p-10 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+              isDragging ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+            }`}
+          >
+            <UploadCloud className="h-12 w-12 text-muted-foreground" />
+            <p className="mt-4 text-center text-muted-foreground">
+              <span className="font-semibold text-primary">Click to upload</span> or drag and drop
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">PDF files only, up to 10MB</p>
+            <Input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={handleFileSelect}
+              accept="application/pdf"
+            />
+          </div>
+        );
+    }
+  };
+
+  return (
+    <Card className="w-full">
+      <CardContent className="p-2">
+        {renderContent()}
+      </CardContent>
+    </Card>
+  );
+}
