@@ -40,7 +40,11 @@ export async function extractDataFromPdf(input: ExtractDataFromPdfInput): Promis
 const extractDataFromPdfPrompt = ai.definePrompt({
   name: 'extractDataFromPdfPrompt',
   input: { schema: ExtractDataFromPdfInputSchema },
-  // output: { schema: ExtractDataFromPdfOutputSchema }, // Output schema is now more complex, let flow handle it.
+  output: { schema: z.object({
+    extractedData: z
+      .string()
+      .describe('The extracted tabular data from the PDF statement, formatted as a CSV.'),
+  })},
   prompt: `You are an expert data extraction specialist. Your task is to extract tabular data from a PDF statement provided as a data URI.
 
   Analyze the PDF and extract all relevant tabular information, ensuring the data is accurately captured and formatted as a CSV.
@@ -58,7 +62,7 @@ const extractDataFromPdfFlow = ai.defineFlow(
   },
   async input => {
     const result = await extractDataFromPdfPrompt(input);
-    const output = result.output();
+    const output = result.output;
 
     if (!output) {
       return {

@@ -67,7 +67,7 @@ const transformExtractedDataFlow = ai.defineFlow(
   },
   async input => {
     const result = await transformExtractedDataPrompt(input);
-    const output = result.output();
+    const output = result.output;
     if (!output) {
         return {
             standardizedData: ""
