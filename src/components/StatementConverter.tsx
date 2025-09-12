@@ -17,9 +17,11 @@ import {
   Loader2,
   AlertTriangle,
   CheckCircle2,
-  Cpu
+  Cpu,
+  Info,
 } from "lucide-react";
 import { convertPdf } from "@/lib/actions";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Status = "idle" | "file-selected" | "processing" | "success" | "error";
 
@@ -188,10 +190,24 @@ export function StatementConverter() {
               placeholder="Converted data preview..."
             />
             {totalTokens > 0 && (
+              <TooltipProvider>
                 <div className="flex items-center text-sm text-muted-foreground mb-4">
                     <Cpu className="mr-2 h-4 w-4" />
-                    Total tokens used: {totalTokens.toLocaleString()}
+                    <span>AI tokens used: {totalTokens.toLocaleString()}</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="ml-1 h-5 w-5 rounded-full">
+                          <Info className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs">
+                        <p>
+                          Tokens are pieces of words the AI uses to process information. The total includes the document content and the generated CSV data. Costs are based on token usage.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                 </div>
+              </TooltipProvider>
             )}
             <div className="flex gap-4">
                 <Button onClick={handleReset} variant="outline">Convert Another File</Button>
