@@ -24,7 +24,7 @@ export type TransformExtractedDataInput = z.infer<
 const TransformExtractedDataOutputSchema = z.object({
   standardizedData: z
     .string()
-    .describe("The extracted data, transformed into a standardized, tabular format."),
+    .describe("The extracted data, transformed into a standardized, CSV format."),
 });
 
 export type TransformExtractedDataOutput = z.infer<
@@ -43,9 +43,9 @@ const transformExtractedDataPrompt = ai.definePrompt({
   output: {schema: TransformExtractedDataOutputSchema},
   prompt: `You are an expert data transformation specialist.
 
-You will receive raw data extracted from a PDF document. Your task is to transform this data into a standardized tabular format that can be easily converted into an Excel spreadsheet.
+You will receive raw data extracted from a PDF document. Your task is to transform this data into a standardized CSV format that can be easily converted into an Excel spreadsheet.
 
-Ensure that the transformed data is well-structured, with clear columns and rows.
+Ensure that the transformed data is well-structured, with clear columns and rows, and properly escaped for CSV.
 
 Raw Data: {{{extractedData}}}`,
 });
