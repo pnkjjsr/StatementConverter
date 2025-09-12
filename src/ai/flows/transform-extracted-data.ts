@@ -25,6 +25,11 @@ const TransformExtractedDataOutputSchema = z.object({
   standardizedData: z
     .string()
     .describe("The extracted data, transformed into a standardized, CSV format."),
+  tokenUsage: z.object({
+    inputTokens: z.number(),
+    outputTokens: z.number(),
+    totalTokens: z.number(),
+  }).optional(),
 });
 
 export type TransformExtractedDataOutput = z.infer<
@@ -40,7 +45,11 @@ export async function transformExtractedData(
 const transformExtractedDataPrompt = ai.definePrompt({
   name: 'transformExtractedDataPrompt',
   input: {schema: TransformExtractedDataInputSchema},
-  output: {schema: TransformExtractedDataOutputSchema},
+  output: {schema: z.object({
+    standardizedData: z
+      .string()
+      .describe("The extracted data, transformed into a standardized, CSV format."),
+  })},
   prompt: `You are an expert data transformation specialist.
 
 You will receive raw data extracted from a PDF document. Your task is to transform this data into a standardized CSV format that can be easily converted into an Excel spreadsheet.
@@ -57,7 +66,17 @@ const transformExtractedDataFlow = ai.defineFlow(
     outputSchema: TransformExtractedDataOutputSchema,
   },
   async input => {
-    const {output} = await transformExtractedDataPrompt(input);
-    return output!;
+    const result = await transformExtractedDataPrompt(input);
+    const output = result.output();
+    if (!output) {
+        return {
+            standardizedData: ""
+        };
+    }
+
+    return {
+      standardizedData: output.standardizedData,
+      tokenUsage: result.usage,
+    };
   }
 );

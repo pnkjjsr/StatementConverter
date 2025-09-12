@@ -25,6 +25,11 @@ const ExtractDataFromPdfOutputSchema = z.object({
   extractedData: z
     .string()
     .describe('The extracted tabular data from the PDF statement.'),
+  tokenUsage: z.object({
+    inputTokens: z.number(),
+    outputTokens: z.number(),
+    totalTokens: z.number(),
+  }).optional(),
 });
 export type ExtractDataFromPdfOutput = z.infer<typeof ExtractDataFromPdfOutputSchema>;
 
@@ -35,10 +40,10 @@ export async function extractDataFromPdf(input: ExtractDataFromPdfInput): Promis
 const extractDataFromPdfPrompt = ai.definePrompt({
   name: 'extractDataFromPdfPrompt',
   input: { schema: ExtractDataFromPdfInputSchema },
-  output: { schema: ExtractDataFromPdfOutputSchema },
+  // output: { schema: ExtractDataFromPdfOutputSchema }, // Output schema is now more complex, let flow handle it.
   prompt: `You are an expert data extraction specialist. Your task is to extract tabular data from a PDF statement provided as a data URI.
 
-  Analyze the PDF and extract all relevant tabular information, ensuring the data is accurately captured and formatted.
+  Analyze the PDF and extract all relevant tabular information, ensuring the data is accurately captured and formatted as a CSV.
 
   The PDF content is provided below:
 
@@ -52,7 +57,18 @@ const extractDataFromPdfFlow = ai.defineFlow(
     outputSchema: ExtractDataFromPdfOutputSchema,
   },
   async input => {
-    const { output } = await extractDataFromPdfPrompt(input);
-    return output!;
+    const result = await extractDataFromPdfPrompt(input);
+    const output = result.output();
+
+    if (!output) {
+      return {
+        extractedData: "",
+      }
+    }
+
+    return {
+      extractedData: output.extractedData,
+      tokenUsage: result.usage,
+    };
   }
 );

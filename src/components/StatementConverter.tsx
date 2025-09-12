@@ -17,6 +17,7 @@ import {
   Loader2,
   AlertTriangle,
   CheckCircle2,
+  Cpu
 } from "lucide-react";
 import { convertPdf } from "@/lib/actions";
 
@@ -27,6 +28,7 @@ export function StatementConverter() {
   const [file, setFile] = useState<File | null>(null);
   const [convertedData, setConvertedData] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [totalTokens, setTotalTokens] = useState<number>(0);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -89,6 +91,7 @@ export function StatementConverter() {
               throw new Error("Conversion returned no data.");
             }
             setConvertedData(result.standardizedData);
+            setTotalTokens(result.totalTokens || 0);
             setStatus("success");
             toast({
               variant: "default",
@@ -148,6 +151,7 @@ export function StatementConverter() {
     setFile(null);
     setConvertedData("");
     setErrorMessage("");
+    setTotalTokens(0);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -183,6 +187,12 @@ export function StatementConverter() {
               className="my-4 h-48 w-full resize-none bg-muted font-mono text-xs"
               placeholder="Converted data preview..."
             />
+            {totalTokens > 0 && (
+                <div className="flex items-center text-sm text-muted-foreground mb-4">
+                    <Cpu className="mr-2 h-4 w-4" />
+                    Total tokens used: {totalTokens.toLocaleString()}
+                </div>
+            )}
             <div className="flex gap-4">
                 <Button onClick={handleReset} variant="outline">Convert Another File</Button>
                 <Button onClick={handleDownload} className="bg-accent text-accent-foreground hover:bg-accent/90">

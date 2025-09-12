@@ -17,6 +17,8 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   }
 
   try {
+    let totalTokens = 0;
+
     // Step 1: Extract data from the PDF
     const extractionResult = await extractDataFromPdf({
       pdfDataUri: validatedInput.data.pdfDataUri,
@@ -24,6 +26,10 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
 
     if (!extractionResult || !extractionResult.extractedData) {
       throw new Error("AI failed to extract any data from the PDF. The document might be empty, unreadable, or image-based.");
+    }
+    
+    if (extractionResult.tokenUsage) {
+        totalTokens += extractionResult.tokenUsage.totalTokens;
     }
 
     // Step 2: Transform the extracted data
@@ -34,8 +40,15 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
     if (!transformationResult || !transformationResult.standardizedData) {
       throw new Error("AI failed to format the extracted data. The data might be in an unusual format.");
     }
+    
+    if (transformationResult.tokenUsage) {
+        totalTokens += transformationResult.tokenUsage.totalTokens;
+    }
 
-    return { standardizedData: transformationResult.standardizedData };
+    return { 
+        standardizedData: transformationResult.standardizedData,
+        totalTokens: totalTokens,
+    };
   } catch (error) {
     console.error("Conversion process failed:", error);
     if (error instanceof Error) {
