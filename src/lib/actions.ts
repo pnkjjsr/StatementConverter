@@ -52,6 +52,9 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   } catch (error) {
     console.error("Conversion process failed:", error);
     if (error instanceof Error) {
+        if (error.message.includes("503") || error.message.toLowerCase().includes("model is overloaded")) {
+            throw new Error("The AI model is currently overloaded. Please try again in a few moments.");
+        }
         throw new Error(`Conversion process failed: ${error.message}`);
     }
     throw new Error(
