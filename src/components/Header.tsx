@@ -12,24 +12,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navLinks = (
     <>
-      <Button variant="ghost" asChild>
-        <Link href="#">Pricing</Link>
-      </Button>
-      <Button variant="ghost" asChild>
-        <Link href="#">Login</Link>
-      </Button>
-      <Button asChild>
-        <Link href="#">Sign Up</Link>
-      </Button>
+      <a href="#" className="text-gray-600 hover:text-primary transition-colors">Pricing</a>
+      <a href="#" className="text-gray-600 hover:text-primary transition-colors">Login</a>
+      <a href="#" className={cn("px-4 py-2 text-sm text-primary border border-primary rounded-full hover:bg-primary hover:text-white transition-colors")}>Sign Up</a>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon">
+          <Button variant="ghost" size="icon" className="text-gray-600 hover:text-primary">
             <Globe className="h-[1.2rem] w-[1.2rem]" />
             <span className="sr-only">Change language</span>
           </Button>
@@ -44,45 +39,34 @@ export function Header() {
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-14 max-w-7xl items-center">
-        <div className="mr-4 flex items-center">
-          <Link href="/" className="flex items-center space-x-2">
-            <FileText className="h-6 w-6 text-primary" />
-            <span className="font-bold">
-              StatementXLS
-            </span>
-          </Link>
-        </div>
-        <div className="flex flex-1 items-center justify-end space-x-2">
-          <nav className="hidden items-center space-x-2 md:flex">
-            {navLinks}
-          </nav>
+    <header className="container mx-auto px-6 py-6 relative z-10">
+       <div className="flex items-center justify-between">
+        <Link href="/" className="flex items-center space-x-2 text-2xl font-semibold text-gray-800">
+          <span className="font-bold">StatementXLS</span>
+          <span className="text-primary">.</span>
+        </Link>
+        
+        {/* Mobile menu button */}
+        <div className="md:hidden">
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                className="md:hidden"
-                size="icon"
-                aria-label="Open menu"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
+              <button className="text-gray-600 focus:outline-none">
+                <Menu className="h-6 w-6" />
+              </button>
             </SheetTrigger>
-            <SheetContent side="left">
-              <div className="flex flex-col space-y-4 p-4">
-                <Link href="/" className="flex items-center space-x-2">
-                  <FileText className="h-6 w-6 text-primary" />
-                  <span className="font-bold">
-                    StatementXLS
-                  </span>
-                </Link>
-                <div className="flex flex-col space-y-2">
-                    {navLinks}
-                </div>
-              </div>
+            <SheetContent side="left" className="bg-white/80 backdrop-blur-sm rounded-lg p-4">
+               <div className="flex flex-col space-y-3 px-2 pt-4 pb-2">
+                <a href="#" className="text-gray-600 hover:text-primary transition-colors py-2">Pricing</a>
+                <a href="#" className="text-gray-600 hover:text-primary transition-colors py-2">Login</a>
+                <a href="#" className="text-center px-4 py-2 text-sm text-primary border border-primary rounded-full hover:bg-primary hover:text-white transition-colors">Sign Up</a>
+               </div>
             </SheetContent>
           </Sheet>
+        </div>
+
+        {/* Desktop menu */}
+        <div className="hidden md:flex items-center space-x-8">
+            {navLinks}
         </div>
       </div>
     </header>

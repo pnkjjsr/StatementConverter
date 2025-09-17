@@ -180,7 +180,7 @@ export function StatementConverter() {
       case "success":
         return (
           <div className="flex flex-col items-center justify-center text-center p-6">
-            <CheckCircle2 className="h-12 w-12 text-accent-foreground" />
+            <CheckCircle2 className="h-12 w-12 text-green-500" />
             <p className="mt-4 font-medium text-lg">Conversion Successful!</p>
             <p className="text-muted-foreground mb-4">Preview your data below and download the CSV file.</p>
             <Textarea
@@ -211,7 +211,7 @@ export function StatementConverter() {
             )}
             <div className="flex gap-4">
                 <Button onClick={handleReset} variant="outline">Convert Another File</Button>
-                <Button onClick={handleDownload} className="bg-accent text-accent-foreground hover:bg-accent/90">
+                <Button onClick={handleDownload} className="bg-green-500 text-white hover:bg-green-600">
                   <Download className="mr-2 h-4 w-4" />
                   Download CSV
                 </Button>
@@ -280,7 +280,7 @@ export function StatementConverter() {
   };
 
   return (
-    <Card className="w-full">
+    <Card className="w-full bg-white/90 backdrop-blur-sm shadow-sm">
       <CardContent className="p-2">
         {renderContent()}
       </CardContent>
