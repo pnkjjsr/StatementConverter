@@ -1,4 +1,5 @@
 
+import { Features } from "@/components/Features";
 import { Header } from "@/components/Header";
 import { StatementConverter } from "@/components/StatementConverter";
 
@@ -16,6 +17,7 @@ export default function Home() {
           </p>
           <StatementConverter />
         </div>
+        <Features />
       </main>
       <footer className="py-4 text-center text-sm text-muted-foreground relative z-10">
         <p>&copy; {new Date().getFullYear()} Statement Bank Converter. All rights reserved.</p>
