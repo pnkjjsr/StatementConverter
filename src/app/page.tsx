@@ -1,11 +1,11 @@
 import { Header } from "@/components/Header";
 import { StatementConverter } from "@/components/StatementConverter";
+import { FogAnimation } from "@/components/FogAnimation";
 
 export default function Home() {
   return (
     <div className="relative min-h-screen w-full flex-col bg-background overflow-hidden">
-      <div className="absolute inset-x-0 bottom-0 h-64 wave-bg-bottom -z-10 opacity-70"></div>
-      <div className="absolute inset-x-0 top-0 h-64 wave-bg-top -z-10 opacity-70"></div>
+      <FogAnimation />
       <Header />
       <main className="flex flex-1 flex-col items-center justify-center p-4 relative z-10">
         <div className="w-full max-w-2xl text-center">
