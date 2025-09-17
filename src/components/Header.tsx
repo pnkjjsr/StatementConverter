@@ -22,19 +22,6 @@ export function Header() {
       <a href="#" className="text-gray-600 hover:text-primary transition-colors">Pricing</a>
       <a href="#" className="text-gray-600 hover:text-primary transition-colors">Login</a>
       <a href="#" className={cn("px-4 py-2 text-sm text-primary border border-primary rounded-full hover:bg-primary hover:text-white transition-colors")}>Sign Up</a>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="text-gray-600 hover:text-primary focus-visible:ring-0 focus-visible:ring-offset-0">
-            <Globe className="h-[1.2rem] w-[1.2rem]" />
-            <span className="sr-only">Change language</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem>English</DropdownMenuItem>
-          <DropdownMenuItem>Español</DropdownMenuItem>
-          <DropdownMenuItem>Français</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
     </>
   );
 
