@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { convertPdf } from "@/lib/actions";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 type Status = "idle" | "file-selected" | "processing" | "success" | "error";
 
@@ -256,7 +257,7 @@ export function StatementConverter() {
           <div
             className={`flex flex-col items-center justify-center p-10 transition-colors`}
           >
-            <Button size="lg" className="h-14 text-lg" onClick={() => fileInputRef.current?.click()}>
+            <Button size="lg" className={cn("h-14 text-lg btn-gradient", 'text-white')} onClick={() => fileInputRef.current?.click()}>
               Click here to convert a PDF!
             </Button>
             <Input
