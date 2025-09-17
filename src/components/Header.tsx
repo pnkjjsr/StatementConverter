@@ -40,8 +40,8 @@ export function Header() {
 
   return (
     <header className={cn(
-      "sticky top-0 z-50 w-full transition-all duration-300",
-      isScrolled ? "bg-background/90 backdrop-blur-sm shadow-sm" : "bg-transparent"
+      "top-0 z-50 w-full transition-all duration-300",
+      isScrolled ? "fixed bg-background/90 backdrop-blur-sm shadow-sm" : "relative bg-transparent"
     )}>
       <div className="container mx-auto px-6 py-4 flex items-center justify-between max-w-[1280px]">
         <Link href="/" className="flex items-center space-x-2 text-2xl font-semibold text-gray-800">
