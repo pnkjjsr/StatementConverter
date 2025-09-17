@@ -2,8 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { Globe, Menu, FileText } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Menu, FileText } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +28,7 @@ export function Header() {
     <header className="container mx-auto px-6 py-6 relative z-10 max-w-[1280px]">
        <div className="flex items-center justify-between">
         <Link href="/" className="flex items-center space-x-2 text-2xl font-semibold text-gray-800">
+          <FileText className="h-8 w-8 text-primary" />
           <span className="font-bold">Statement Bank Converter</span>
           <span className="text-primary">.</span>
         </Link>
