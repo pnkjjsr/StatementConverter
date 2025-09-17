@@ -10,7 +10,7 @@ export const FogAnimation = () => {
   const vantaRef = useRef(null);
 
   useEffect(() => {
-    if (!vantaEffect && window.innerWidth > 768) { // Only run on desktop
+    if (!vantaEffect) { // Only run on desktop
       setVantaEffect(
         FOG({
           el: vantaRef.current,
@@ -20,12 +20,13 @@ export const FogAnimation = () => {
           gyroControls: false,
           minHeight: 200.0,
           minWidth: 200.0,
-          highlightColor: 0xd4a7f0,
-          midtoneColor: 0x63c5b7,
-          lowlightColor: 0x568bfa,
+          highlightColor: 0xE9E0EF,
+          midtoneColor: 0xC9DAD8,
+          lowlightColor: 0xEFF4FF,
+          baseColor: 0xffffff,
           blurFactor: 0.73,
-          speed: 2.1,
-          zoom: 0.5,
+          speed: 2.10,
+          zoom: 0.50,
         })
       );
     }
@@ -34,5 +35,10 @@ export const FogAnimation = () => {
     };
   }, [vantaEffect]);
 
-  return <div ref={vantaRef} className="absolute inset-0 -z-10" />;
+  return (
+    <div ref={vantaRef} className="absolute inset-0 -z-10" >
+      <div className="absolute inset-x-0 bottom-0 h-64 wave-bg -z-10 opacity-70"></div>
+      <div className="absolute inset-x-0 top-0 h-64 wave-bg-top -z-10 opacity-70"></div>
+    </div>
+  );
 };

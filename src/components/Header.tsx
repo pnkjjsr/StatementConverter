@@ -24,7 +24,7 @@ export function Header() {
       <a href="#" className={cn("px-4 py-2 text-sm text-primary border border-primary rounded-full hover:bg-primary hover:text-white transition-colors")}>Sign Up</a>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="text-gray-600 hover:text-primary">
+          <Button variant="ghost" size="icon" className="text-gray-600 hover:text-primary focus-visible:ring-0 focus-visible:ring-offset-0">
             <Globe className="h-[1.2rem] w-[1.2rem]" />
             <span className="sr-only">Change language</span>
           </Button>
@@ -39,7 +39,7 @@ export function Header() {
   );
 
   return (
-    <header className="container mx-auto px-6 py-6 relative z-10">
+    <header className="container mx-auto px-6 py-6 relative z-10 max-w-[1280px]">
        <div className="flex items-center justify-between">
         <Link href="/" className="flex items-center space-x-2 text-2xl font-semibold text-gray-800">
           <span className="font-bold">Statement Bank Converter</span>

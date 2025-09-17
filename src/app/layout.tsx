@@ -27,8 +27,7 @@ export default function RootLayout({
       <body className={cn("font-body antialiased")}>
         <div className="relative min-h-screen w-full flex-col overflow-hidden">
           <FogAnimation />
-          <div className="absolute inset-x-0 bottom-0 h-64 wave-bg -z-10 opacity-70"></div>
-          <div className="absolute inset-x-0 top-0 h-64 wave-bg-top -z-10 opacity-70"></div>
+          
           {children}
         </div>
         <Toaster />
