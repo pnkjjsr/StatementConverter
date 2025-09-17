@@ -254,19 +254,11 @@ export function StatementConverter() {
       default:
         return (
           <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`flex flex-col items-center justify-center p-10 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-              isDragging ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-            }`}
+            className={`flex flex-col items-center justify-center p-10 transition-colors`}
           >
-            <UploadCloud className="h-12 w-12 text-muted-foreground" />
-            <p className="mt-4 text-center text-muted-foreground">
-              <span className="font-semibold text-primary">Click to upload</span> or drag and drop
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">PDF files only, up to 10MB</p>
+            <Button size="lg" className="h-14 text-lg" onClick={() => fileInputRef.current?.click()}>
+              Click here to convert a PDF!
+            </Button>
             <Input
               ref={fileInputRef}
               type="file"
