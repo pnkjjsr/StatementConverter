@@ -11,7 +11,7 @@ export default function Home() {
     <>
       <Header />
       <main className="flex flex-1 flex-col items-center justify-center p-4 relative z-10">
-        <AnimatedSection className="w-full max-w-2xl text-center">
+        <AnimatedSection className="w-full max-w-2xl text-center pt-12">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
             Convert Your Bank Statements to <span className="text-primary">Excel</span>
           </h1>
