@@ -4,17 +4,31 @@
 import Link from "next/link";
 import { Menu, FileText } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 10) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   const navLinks = (
     <>
@@ -25,7 +39,10 @@ export function Header() {
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-background/90 backdrop-blur-sm shadow-sm">
+    <header className={cn(
+      "sticky top-0 z-50 w-full transition-all duration-300",
+      isScrolled ? "bg-background/90 backdrop-blur-sm shadow-sm" : "bg-transparent"
+    )}>
       <div className="container mx-auto px-6 py-4 flex items-center justify-between max-w-[1280px]">
         <Link href="/" className="flex items-center space-x-2 text-2xl font-semibold text-gray-800">
           <FileText className="h-8 w-8 text-primary" />
