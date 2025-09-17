@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 240 17% 97%;
+    --background: 240 100% 99%;
     --foreground: 240 6% 17%;
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
@@ -16,8 +16,8 @@
     --secondary-foreground: 240 5.9% 10%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 240 3.8% 46.1%;
-    --accent: 254 94% 78%;
-    --accent-foreground: 240 6% 17%;
+    --accent: 142 76% 36%;
+    --accent-foreground: 0 0% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 214.3 31.8% 91.4%;
@@ -51,8 +51,8 @@
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 254 94% 78%;
-    --accent-foreground: 240 6% 17%;
+    --accent: 142 76% 36%;
+    --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 217.2 32.6% 17.5%;
@@ -81,4 +81,17 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@layer components {
+    .wave-bg {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23A78BFA' fill-opacity='0.1' d='M0,128L48,144C96,160,192,192,288,186.7C384,181,480,139,576,138.7C672,139,768,181,864,181.3C960,181,1056,139,1152,133.3C1248,128,1344,160,1392,176L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
+      background-size: cover;
+      background-position: center;
+    }
+    .wave-bg-top {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23A78BFA' fill-opacity='0.05' d='M0,224L60,229.3C120,235,240,245,360,229.3C480,213,600,171,720,170.7C840,171,960,213,1080,218.7C1200,224,1320,192,1380,176L1440,160L1440,0L1380,0C1320,0,1200,0,1080,0C960,0,840,0,720,0C600,0,480,0,360,0C240,0,120,0,60,0L0,0Z'%3E%3C/path%3E%3C/svg%3E");
+      background-size: cover;
+      background-position: center;
+    }
 }
