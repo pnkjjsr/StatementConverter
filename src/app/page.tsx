@@ -19,9 +19,6 @@ export default function Home() {
             Effortlessly extract tables from PDF statements and export them to a clean CSV file with one click.
           </p>
         </AnimatedSection>
-        <AnimatedSection className="w-full" delay={0.1}>
-            <HowItWorks />
-        </AnimatedSection>
         <AnimatedSection className="w-full max-w-2xl text-center" delay={0.2}>
           <StatementConverter />
         </AnimatedSection>

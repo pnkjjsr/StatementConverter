@@ -55,7 +55,7 @@ export function StatementConverter() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     handleFileChange(e.target.files?.[0] ?? null);
   };
-  
+
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -159,7 +159,7 @@ export function StatementConverter() {
       fileInputRef.current.value = "";
     }
   };
-  
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -193,29 +193,29 @@ export function StatementConverter() {
             {totalTokens > 0 && (
               <TooltipProvider>
                 <div className="flex items-center text-sm text-muted-foreground mb-4">
-                    <Cpu className="mr-2 h-4 w-4" />
-                    <span>AI tokens used: {totalTokens.toLocaleString()}</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="ml-1 h-5 w-5 rounded-full">
-                          <Info className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-xs">
-                        <p>
-                          Tokens are pieces of words the AI uses to process information. The total includes the document content and the generated CSV data. Costs are based on token usage.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
+                  <Cpu className="mr-2 h-4 w-4" />
+                  <span>AI tokens used: {totalTokens.toLocaleString()}</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="ml-1 h-5 w-5 rounded-full">
+                        <Info className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs">
+                      <p>
+                        Tokens are pieces of words the AI uses to process information. The total includes the document content and the generated CSV data. Costs are based on token usage.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </TooltipProvider>
             )}
             <div className="flex gap-4">
-                <Button onClick={handleReset} variant="outline">Convert Another File</Button>
-                <Button onClick={handleDownload} className="bg-green-500 text-white hover:bg-green-600">
-                  <Download className="mr-2 h-4 w-4" />
-                  Download CSV
-                </Button>
+              <Button onClick={handleReset} variant="outline">Convert Another File</Button>
+              <Button onClick={handleDownload} className="bg-green-500 text-white hover:bg-green-600">
+                <Download className="mr-2 h-4 w-4" />
+                Download CSV
+              </Button>
             </div>
           </div>
         );
@@ -237,17 +237,17 @@ export function StatementConverter() {
             <p className="mt-4 font-medium">{file?.name}</p>
             {file && <p className="text-sm text-muted-foreground">{formatFileSize(file.size)}</p>}
             <div className="flex gap-4 mt-6">
-                <Button onClick={handleReset} variant="outline">Change File</Button>
-                <Button onClick={handleConvert} disabled={isPending}>
-                  {isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Converting...
-                    </>
-                  ) : (
-                    "Convert to CSV"
-                  )}
-                </Button>
+              <Button onClick={handleReset} variant="outline">Change File</Button>
+              <Button onClick={handleConvert} disabled={isPending}>
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Converting...
+                  </>
+                ) : (
+                  "Convert to CSV"
+                )}
+              </Button>
             </div>
           </div>
         );
