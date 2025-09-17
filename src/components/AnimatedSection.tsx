@@ -15,7 +15,8 @@ export function AnimatedSection({ children, className, delay = 0, ...props }: An
   return (
     <motion.section
       initial={{ opacity: 0, y: 50 }}
-      animate={{ opacity: 1, y: 0 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
       transition={{ duration: 0.5, ease: 'easeOut', delay }}
       className={cn('w-full', className)}
       {...props}
