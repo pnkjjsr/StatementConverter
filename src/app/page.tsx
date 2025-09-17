@@ -2,6 +2,8 @@
 import { Features } from "@/components/Features";
 import { Header } from "@/components/Header";
 import { StatementConverter } from "@/components/StatementConverter";
+import { Pricing } from "@/components/Pricing";
+import { Contact } from "@/components/Contact";
 
 export default function Home() {
   return (
@@ -18,9 +20,21 @@ export default function Home() {
           <StatementConverter />
         </div>
         <Features />
+        <Pricing />
+        <Contact />
       </main>
-      <footer className="py-4 text-center text-sm text-muted-foreground relative z-10">
-        <p>&copy; {new Date().getFullYear()} Statement Bank Converter. All rights reserved.</p>
+      <footer className="w-full max-w-6xl mx-auto px-6 py-8 text-center text-sm text-muted-foreground relative z-10">
+        <div className="flex flex-col md:flex-row justify-between items-center">
+          <p className="mb-4 md:mb-0">&copy; {new Date().getFullYear()} Statement Bank Converter Ltd. All rights reserved.</p>
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
+            <a href="#" className="hover:text-primary transition-colors">Earn Credits</a>
+            <a href="#" className="hover:text-primary transition-colors">API Docs</a>
+            <a href="#" className="hover:text-primary transition-colors">About</a>
+            <a href="#" className="hover:text-primary transition-colors">Terms</a>
+            <a href="#" className="hover:text-primary transition-colors">Privacy</a>
+            <a href="#" className="hover:text-primary transition-colors">Blog</a>
+          </div>
+        </div>
       </footer>
     </>
   );
