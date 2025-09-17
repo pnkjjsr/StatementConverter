@@ -50,7 +50,7 @@ export function Header() {
           <Link href="/" className="flex items-center space-x-2">
             <FileText className="h-6 w-6 text-primary" />
             <span className="font-bold">
-              Bank Statement Converter
+              StatementXLS
             </span>
           </Link>
         </div>
@@ -74,7 +74,7 @@ export function Header() {
                 <Link href="/" className="flex items-center space-x-2">
                   <FileText className="h-6 w-6 text-primary" />
                   <span className="font-bold">
-                    Bank Statement Converter
+                    StatementXLS
                   </span>
                 </Link>
                 <div className="flex flex-col space-y-2">
