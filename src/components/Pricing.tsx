@@ -2,6 +2,7 @@
 import { Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AnimatedSection } from "./AnimatedSection";
 
 export function Pricing() {
   const tiers = [
@@ -29,7 +30,7 @@ export function Pricing() {
   ];
 
   return (
-    <section className="w-full max-w-6xl mx-auto py-16 px-4 relative z-10">
+    <AnimatedSection className="max-w-6xl mx-auto py-16 px-4 relative z-10">
       <div className="grid md:grid-cols-3 gap-8">
         {tiers.map((tier) => (
           <Card key={tier.name} className="flex flex-col">
@@ -60,6 +61,6 @@ export function Pricing() {
           </Card>
         ))}
       </div>
-    </section>
+    </AnimatedSection>
   );
 }

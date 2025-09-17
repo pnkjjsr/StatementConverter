@@ -1,4 +1,5 @@
 import { ShieldCheck, Landmark, Target } from "lucide-react";
+import { AnimatedSection } from "./AnimatedSection";
 
 export function Features() {
   const features = [
@@ -20,7 +21,7 @@ export function Features() {
   ];
 
   return (
-    <section className="w-full max-w-6xl mx-auto py-16 px-4 relative z-10">
+    <AnimatedSection className="max-w-6xl mx-auto py-16 px-4 relative z-10">
       <div className="grid md:grid-cols-3 gap-12 text-center">
         {features.map((feature) => (
           <div key={feature.title} className="flex flex-col items-center">
@@ -30,6 +31,6 @@ export function Features() {
           </div>
         ))}
       </div>
-    </section>
+    </AnimatedSection>
   );
 }
