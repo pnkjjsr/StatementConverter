@@ -42,7 +42,7 @@ export function Header() {
     <header className="container mx-auto px-6 py-6 relative z-10">
        <div className="flex items-center justify-between">
         <Link href="/" className="flex items-center space-x-2 text-2xl font-semibold text-gray-800">
-          <span className="font-bold">StatementXLS</span>
+          <span className="font-bold">Statement Bank Converter</span>
           <span className="text-primary">.</span>
         </Link>
         

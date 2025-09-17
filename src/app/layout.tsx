@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "StatementXLS",
+  title: "Statement Bank Converter",
   description: "Convert PDF bank and credit card statements to Excel with one click.",
 };
 

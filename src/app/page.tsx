@@ -19,7 +19,7 @@ export default function Home() {
         </div>
       </main>
       <footer className="py-4 text-center text-sm text-muted-foreground relative z-10">
-        <p>&copy; {new Date().getFullYear()} StatementXLS. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Statement Bank Converter. All rights reserved.</p>
       </footer>
     </div>
   );
