@@ -21,7 +21,7 @@ export function Features() {
   ];
 
   return (
-    <AnimatedSection className="max-w-6xl mx-auto py-16 px-4 relative z-10">
+    <AnimatedSection className="max-w-6xl mx-auto py-16 px-4 relative z-10" delay={0.2}>
       <div className="grid md:grid-cols-3 gap-12 text-center">
         {features.map((feature) => (
           <div key={feature.title} className="flex flex-col items-center">

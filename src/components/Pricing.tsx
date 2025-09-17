@@ -30,7 +30,7 @@ export function Pricing() {
   ];
 
   return (
-    <AnimatedSection className="max-w-6xl mx-auto py-16 px-4 relative z-10">
+    <AnimatedSection className="max-w-6xl mx-auto py-16 px-4 relative z-10" delay={0.4}>
       <div className="grid md:grid-cols-3 gap-8">
         {tiers.map((tier) => (
           <Card key={tier.name} className="flex flex-col">

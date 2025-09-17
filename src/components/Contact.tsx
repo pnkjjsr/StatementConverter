@@ -4,7 +4,7 @@ import { AnimatedSection } from "./AnimatedSection";
 
 export function Contact() {
   return (
-    <AnimatedSection className="max-w-6xl mx-auto py-16 px-4 relative z-10">
+    <AnimatedSection className="max-w-6xl mx-auto py-16 px-4 relative z-10" delay={0.6}>
       <div className="bg-muted p-8 rounded-lg flex flex-col md:flex-row items-center justify-between">
         <div className="text-center md:text-left mb-6 md:mb-0">
           <h2 className="text-3xl font-bold text-gray-800 mb-2">Need more?</h2>
