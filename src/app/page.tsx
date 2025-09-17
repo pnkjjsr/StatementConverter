@@ -1,9 +1,11 @@
+import { Header } from "@/components/Header";
 import { StatementConverter } from "@/components/StatementConverter";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
-      <main className="flex flex-1 flex-col items-center justify-center">
+    <div className="flex min-h-screen w-full flex-col bg-background">
+      <Header />
+      <main className="flex flex-1 flex-col items-center justify-center p-4">
         <div className="w-full max-w-2xl">
           <header className="mb-8 text-center">
             <h1 className="font-headline text-4xl font-bold tracking-tight text-primary sm:text-5xl">
