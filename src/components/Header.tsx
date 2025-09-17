@@ -47,9 +47,8 @@ export function Header() {
         <Link href="/" className="flex items-center space-x-2 text-2xl font-semibold text-gray-800">
           <FileText className="h-8 w-8 text-primary" />
           <span className="font-bold">Statement Bank Converter</span>
-          <span className="text-primary">.</span>
         </Link>
-        
+
         {/* Mobile menu button */}
         <div className="md:hidden">
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -59,18 +58,18 @@ export function Header() {
               </button>
             </SheetTrigger>
             <SheetContent side="left" className="bg-white/80 backdrop-blur-sm rounded-lg p-4">
-               <div className="flex flex-col space-y-3 px-2 pt-4 pb-2">
+              <div className="flex flex-col space-y-3 px-2 pt-4 pb-2">
                 <a href="#" className="text-gray-600 hover:text-primary transition-colors py-2">Pricing</a>
                 <a href="#" className="text-gray-600 hover:text-primary transition-colors py-2">Login</a>
                 <a href="#" className="text-center px-4 py-2 text-sm text-primary border border-primary rounded-full hover:bg-primary hover:text-white transition-colors">Sign Up</a>
-               </div>
+              </div>
             </SheetContent>
           </Sheet>
         </div>
 
         {/* Desktop menu */}
         <div className="hidden md:flex items-center space-x-8">
-            {navLinks}
+          {navLinks}
         </div>
       </div>
     </header>

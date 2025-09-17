@@ -1,9 +1,11 @@
 
+
 import { Features } from "@/components/Features";
 import { StatementConverter } from "@/components/StatementConverter";
 import { Pricing } from "@/components/Pricing";
 import { Contact } from "@/components/Contact";
 import { AnimatedSection } from "@/components/AnimatedSection";
+import { HowItWorks } from "@/components/HowItWorks";
 
 export default function Home() {
   return (
@@ -16,6 +18,11 @@ export default function Home() {
           <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
             Effortlessly extract tables from PDF statements and export them to a clean CSV file with one click.
           </p>
+        </AnimatedSection>
+        <AnimatedSection className="w-full" delay={0.1}>
+            <HowItWorks />
+        </AnimatedSection>
+        <AnimatedSection className="w-full max-w-2xl text-center" delay={0.2}>
           <StatementConverter />
         </AnimatedSection>
         <Features />

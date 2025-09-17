@@ -10,7 +10,7 @@ export const FogAnimation = () => {
   const vantaRef = useRef(null);
 
   useEffect(() => {
-    if (!vantaEffect) { // Only run on desktop
+    if (!vantaEffect && window.innerWidth > 1024) {
       setVantaEffect(
         FOG({
           el: vantaRef.current,
