@@ -16,8 +16,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, Lock } from 'lucide-react';
-import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useState, useEffect } from 'react';
+import { supabase, supabaseError } from '@/lib/supabase';
 
 const formSchema = z.object({
   firstName: z.string().min(1, { message: 'First name is required.' }),
@@ -34,6 +34,16 @@ export function SignupForm({ onSwitchView }: SignupFormProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+    useEffect(() => {
+    if (supabaseError) {
+      toast({
+        variant: 'destructive',
+        title: 'Configuration Error',
+        description: 'Supabase credentials are not configured. Authentication is disabled.',
+      });
+    }
+  }, [toast]);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -45,6 +55,7 @@ export function SignupForm({ onSwitchView }: SignupFormProps) {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!supabase) return;
     setLoading(true);
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: values.email,
@@ -152,7 +163,7 @@ export function SignupForm({ onSwitchView }: SignupFormProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full bg-green-500 hover:bg-green-600" disabled={loading}>
+        <Button type="submit" className="w-full bg-green-500 hover:bg-green-600" disabled={loading || !!supabaseError}>
           {loading ? 'Creating Account...' : 'Create Account'}
         </Button>
          <p className="px-8 text-center text-sm text-muted-foreground">
