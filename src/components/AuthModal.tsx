@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { LoginForm } from './LoginForm';
 import { SignupForm } from './SignupForm';
@@ -9,10 +9,17 @@ import { SignupForm } from './SignupForm';
 interface AuthModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialView?: 'login' | 'signup';
 }
 
-export function AuthModal({ open, onOpenChange }: AuthModalProps) {
-  const [view, setView] = useState<'login' | 'signup'>('login');
+export function AuthModal({ open, onOpenChange, initialView = 'login' }: AuthModalProps) {
+  const [view, setView] = useState<'login' | 'signup'>(initialView);
+
+  useEffect(() => {
+    if (open) {
+      setView(initialView);
+    }
+  }, [open, initialView]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

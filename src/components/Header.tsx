@@ -16,6 +16,7 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalView, setAuthModalView] = useState<"login" | "signup">("login");
 
   useEffect(() => {
     const handleScroll = () => {
@@ -32,7 +33,8 @@ export function Header() {
     };
   }, []);
 
-  const handleAuthModalOpen = () => {
+  const handleAuthModalOpen = (view: "login" | "signup") => {
+    setAuthModalView(view);
     setIsAuthModalOpen(true);
     setIsMobileMenuOpen(false);
   }
@@ -40,14 +42,18 @@ export function Header() {
   const navLinks = (
     <>
       <a href="#" className="text-gray-600 hover:text-primary transition-colors">Pricing</a>
-      <button onClick={handleAuthModalOpen} className="text-gray-600 hover:text-primary transition-colors">Login</button>
-      <button onClick={handleAuthModalOpen} className={cn("px-4 py-2 text-sm text-primary border border-primary rounded-full hover:bg-primary hover:text-white transition-colors")}>Sign Up</button>
+      <button onClick={() => handleAuthModalOpen("login")} className="text-gray-600 hover:text-primary transition-colors">Login</button>
+      <button onClick={() => handleAuthModalOpen("signup")} className={cn("px-4 py-2 text-sm text-primary border border-primary rounded-full hover:bg-primary hover:text-white transition-colors")}>Sign Up</button>
     </>
   );
 
   return (
     <>
-      <AuthModal open={isAuthModalOpen} onOpenChange={setIsAuthModalOpen} />
+      <AuthModal 
+        open={isAuthModalOpen} 
+        onOpenChange={setIsAuthModalOpen}
+        initialView={authModalView}
+      />
       <header className={cn(
         "fixed top-0 z-50 w-full transition-all duration-300",
         isScrolled ? "bg-background/90 backdrop-blur-sm shadow-sm" : "bg-transparent"
@@ -69,8 +75,8 @@ export function Header() {
               <SheetContent side="left" className="bg-white/80 backdrop-blur-sm rounded-lg p-4">
                 <div className="flex flex-col space-y-3 px-2 pt-4 pb-2">
                   <a href="#" className="text-gray-600 hover:text-primary transition-colors py-2">Pricing</a>
-                  <button onClick={handleAuthModalOpen} className="text-gray-600 text-left hover:text-primary transition-colors py-2">Login</button>
-                  <button onClick={handleAuthModalOpen} className="text-center px-4 py-2 text-sm text-primary border border-primary rounded-full hover:bg-primary hover:text-white transition-colors">Sign Up</button>
+                  <button onClick={() => handleAuthModalOpen("login")} className="text-gray-600 text-left hover:text-primary transition-colors py-2">Login</button>
+                  <button onClick={() => handleAuthModalOpen("signup")} className="text-center px-4 py-2 text-sm text-primary border border-primary rounded-full hover:bg-primary hover:text-white transition-colors">Sign Up</button>
                 </div>
               </SheetContent>
             </Sheet>
