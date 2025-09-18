@@ -192,12 +192,12 @@ export function SignupForm({ onSwitchView }: SignupFormProps) {
             <Button
                 key={provider.name}
                 variant="outline"
-                className="w-full"
+                className="w-full justify-start"
                 onClick={() => handleOAuthLogin(provider.name.toLowerCase() as Provider)}
                 disabled={!!supabaseError}
             >
-                {provider.icon}
-                Continue with {provider.name}
+                <div className="w-6 flex justify-center">{provider.icon}</div>
+                <span className="flex-1 text-center">Continue with {provider.name}</span>
             </Button>
             ))}
         </div>
