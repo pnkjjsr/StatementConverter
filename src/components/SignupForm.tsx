@@ -15,11 +15,9 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Lock, User } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 import { useState } from 'react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 
 const formSchema = z.object({
   firstName: z.string().min(1, { message: 'First name is required.' }),
@@ -48,30 +46,47 @@ export function SignupForm({ onSwitchView }: SignupFormProps) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: values.email,
+      password: values.password,
+    });
 
-      await setDoc(doc(db, 'users', user.uid), {
-        firstName: values.firstName,
-        lastName: values.lastName,
-        email: values.email,
-      });
-      
-      toast({
-        title: 'Signup Successful',
-        description: "Your account has been created.",
-      });
-      // onOpenChange(false); // Close modal on success
-    } catch (error: any) {
+    if (authError) {
       toast({
         variant: 'destructive',
         title: 'Signup Failed',
-        description: error.message,
+        description: authError.message,
       });
-    } finally {
       setLoading(false);
+      return;
     }
+
+    if (authData.user) {
+        const { error: dbError } = await supabase
+        .from('users')
+        .insert([
+            {
+            id: authData.user.id,
+            first_name: values.firstName,
+            last_name: values.lastName,
+            email: values.email,
+            },
+        ]);
+
+        if (dbError) {
+            toast({
+                variant: 'destructive',
+                title: 'Signup Failed',
+                description: `Could not save user profile: ${dbError.message}`,
+            });
+        } else {
+            toast({
+                title: 'Signup Successful',
+                description: "Your account has been created. Please check your email to verify.",
+            });
+        }
+    }
+    setLoading(false);
   }
 
   return (

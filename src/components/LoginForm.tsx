@@ -17,8 +17,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, Lock } from 'lucide-react';
 import { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -43,22 +42,25 @@ export function LoginForm({ onSwitchView }: LoginFormProps) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-      toast({
-        title: 'Login Successful',
-        description: "Welcome back!",
-      });
-      // onOpenChange(false); // Close modal on success
-    } catch (error: any) {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: values.email,
+      password: values.password,
+    });
+
+    if (error) {
       toast({
         variant: 'destructive',
         title: 'Login Failed',
         description: error.message,
       });
-    } finally {
-      setLoading(false);
+    } else {
+      toast({
+        title: 'Login Successful',
+        description: "Welcome back!",
+      });
+      // onOpenChange(false); // Close modal on success
     }
+    setLoading(false);
   }
 
   return (
