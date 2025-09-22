@@ -29,6 +29,30 @@ import {
 } from 'react-share';
 import { InviteFriendForm } from '@/components/InviteFriendForm';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+
+const faqItems = [
+    {
+      question: 'Is there a limit to how many credits I can earn?',
+      answer:
+        'Nope! The more friends you refer, the more credits you can earn. There is no limit.',
+    },
+    {
+      question: 'When do I receive my credits?',
+      answer:
+        'Credits are added to your account instantly as soon as your referred friend successfully creates and verifies their account.',
+    },
+    {
+      question: 'Can I track my referrals?',
+      answer:
+        "Currently, we don't have a dashboard to track individual referrals, but you will see your credit balance increase in your account section (coming soon!).",
+    },
+  ];
 
 export default function EarnCreditsPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -191,25 +215,39 @@ export default function EarnCreditsPage() {
           </CardContent>
         </Card>
 
-        <div className="prose prose-lg mx-auto mt-12">
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-            How It Works
-          </h2>
-          <ol className="list-decimal list-inside space-y-4">
-            <li><strong>Share Your Link:</strong> Copy your unique referral link above and share it with friends, colleagues, or on social media.</li>
-            <li><strong>Friend Signs Up:</strong> When someone clicks your link and signs up for a free account, they become your referral.</li>
-            <li><strong>You Earn Credits:</strong> For every successful sign-up, we'll automatically add 10 page credits to your account balance. It's that simple!</li>
-          </ol>
+        <div className="mx-auto mt-12 w-full">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 text-center mb-8">
+                How It Works
+            </h2>
+            <div className="prose prose-lg mx-auto">
+                <ol className="list-decimal list-inside space-y-4">
+                    <li><strong>Share Your Link:</strong> Copy your unique referral link above and share it with friends, colleagues, or on social media.</li>
+                    <li><strong>Friend Signs Up:</strong> When someone clicks your link and signs up for a free account, they become your referral.</li>
+                    <li><strong>You Earn Credits:</strong> For every successful sign-up, we'll automatically add 10 page credits to your account balance. It's that simple!</li>
+                </ol>
+            </div>
 
-          <h2 className="mt-12 text-3xl font-bold tracking-tight text-gray-900">
-            Frequently Asked Questions
-          </h2>
-          <p><strong>Is there a limit to how many credits I can earn?</strong></p>
-          <p>Nope! The more friends you refer, the more credits you can earn. There is no limit.</p>
-          <p><strong>When do I receive my credits?</strong></p>
-          <p>Credits are added to your account instantly as soon as your referred friend successfully creates and verifies their account.</p>
-          <p><strong>Can I track my referrals?</strong></p>
-          <p>Currently, we don't have a dashboard to track individual referrals, but you will see your credit balance increase in your account section (coming soon!).</p>
+            <div className="mt-12">
+                <h2 className="text-3xl font-bold tracking-tight text-gray-900 text-center mb-8">
+                    Frequently Asked Questions
+                </h2>
+                 <Accordion type="single" collapsible className="w-full space-y-4">
+                    {faqItems.map((item, index) => (
+                    <AccordionItem
+                        key={index}
+                        value={`item-${index}`}
+                        className="bg-gray-900/5 backdrop-blur-sm border border-black/10 rounded-xl faq-accordion-item"
+                    >
+                        <AccordionTrigger className="text-left font-semibold p-6 text-gray-800 hover:no-underline">
+                        {item.question}
+                        </AccordionTrigger>
+                        <AccordionContent className="p-6 pt-0 text-gray-600">
+                        {item.answer}
+                        </AccordionContent>
+                    </AccordionItem>
+                    ))}
+                </Accordion>
+            </div>
         </div>
       </div>
     </>
