@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Check, User, UserPlus, Gem, ArrowRight } from 'lucide-react';
