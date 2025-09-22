@@ -198,7 +198,7 @@ export function SignupForm({ onSwitchView }: SignupFormProps) {
                 disabled={!!supabaseError}
                 aria-label={`Continue with ${provider.name}`}
             >
-                {provider.icon}
+                {provider.icon} Continue with Google
             </Button>
             ))}
         </div>

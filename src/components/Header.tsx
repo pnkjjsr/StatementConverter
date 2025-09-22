@@ -61,7 +61,7 @@ export function Header() {
         <div className="container mx-auto px-6 py-4 flex items-center justify-between max-w-[1280px]">
           <Link href="/" className="flex items-center space-x-2 text-2xl font-semibold text-gray-800">
             <FileText className="h-8 w-8 text-primary" />
-            <span className="font-bold">Statement Bank Converter</span>
+            <span className="font-bold">Bank Statement Converter</span>
           </Link>
 
           {/* Mobile menu button */}
