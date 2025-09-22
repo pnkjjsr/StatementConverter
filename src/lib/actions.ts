@@ -39,16 +39,17 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   const validatedInput = convertPdfSchema.safeParse(input);
 
   if (!validatedInput.success) {
-    throw new Error("Invalid input: A valid PDF data URI is required.");
+    return { error: "Invalid input: A valid PDF data URI is required." };
   }
 
   const user = await getServerUser();
   const isEffectivelyAnonymous = validatedInput.data.isAnonymous || !user;
 
 
+  // Check limits BEFORE conversion
   if (isEffectivelyAnonymous) {
       if (!supabaseAdmin) {
-        throw new Error("Application is not configured for usage tracking.");
+        return { error: "Application is not configured for usage tracking." };
       }
 
       const headersList = headers();
@@ -59,22 +60,20 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
 
       const { data: recentUsage, error: usageError } = await supabaseAdmin
         .from('sc_anonymous_usage')
-        .select('id')
+        .select('id', { count: 'exact', head: true })
         .eq('ip_hash', ipHash)
-        .gt('created_at', twentyFourHoursAgo)
-        .limit(1);
+        .gt('created_at', twentyFourHoursAgo);
       
       if (usageError) {
         console.error("Error checking anonymous usage:", usageError);
-        // Fail open in case of db error, but log it.
       }
       
-      if (recentUsage && recentUsage.length > 0) {
-        throw new Error("You have reached the free conversion limit for today. Please create an account to convert more documents.");
+      if (recentUsage && recentUsage.count > 0) {
+        return { error: "You have reached the free conversion limit for today. Please create an account to convert more documents."};
       }
   } else if (user) {
     if (!supabaseAdmin) {
-      throw new Error("Application is not configured for user management.");
+      return { error: "Application is not configured for user management." };
     }
     const { data: userProfile, error: profileError } = await supabaseAdmin
       .from('sc_users')
@@ -83,11 +82,11 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       .single();
 
     if (profileError || !userProfile) {
-      throw new Error("Could not retrieve user profile.");
+      return { error: "Could not retrieve user profile." };
     }
 
     if (userProfile.plan === 'Free' && userProfile.credits <= 0) {
-      throw new Error("You have no more credits. Please upgrade your plan to convert more documents.");
+      return { error: "You have no more credits. Please upgrade your plan to convert more documents." };
     }
   }
 
@@ -147,7 +146,6 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
         const { error: decrementError } = await supabaseAdmin.rpc('decrement_credits', { p_user_id: user.id });
         if (decrementError) {
           console.error("Failed to decrement credits:", decrementError);
-          // Don't block the user, but log the issue.
         }
       }
     }
@@ -161,13 +159,11 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
     console.error("Conversion process failed:", error);
     if (error instanceof Error) {
         if (error.message.includes("503") || error.message.toLowerCase().includes("model is overloaded")) {
-            throw new Error("The AI model is currently overloaded. Please try again in a few moments.");
+            return { error: "The AI model is currently overloaded. Please try again in a few moments." };
         }
-        throw new Error(`Conversion process failed: ${error.message}`);
+        return { error: `Conversion process failed: ${error.message}` };
     }
-    throw new Error(
-      "An unknown error occurred during the conversion process. Please check the PDF file and try again."
-    );
+    return { error: "An unknown error occurred during the conversion process. Please check the PDF file and try again." };
   }
 }
 
@@ -299,23 +295,21 @@ export async function getUserCreditInfo(userFromClient?: User | null): Promise<s
             const ipHash = createHash('sha256').update(ipAddress).digest('hex');
             const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
             
-            const { data: recentUsage, error } = await supabaseAdmin
+            const { count, error } = await supabaseAdmin
                 .from('sc_anonymous_usage')
-                .select('id')
+                .select('id', { count: 'exact', head: true })
                 .eq('ip_hash', ipHash)
-                .gt('created_at', twentyFourHoursAgo)
-                .limit(1);
+                .gt('created_at', twentyFourHoursAgo);
 
             if (error) {
                 console.error("Error checking anonymous usage for header:", error);
                 return "1 page remaining";
             }
-            return (recentUsage && recentUsage.length > 0) ? "0 pages remaining" : "1 page remaining";
+            return (count !== null && count > 0) ? "0 pages remaining" : "1 page remaining";
         }
         return "1 page remaining";
     }
 
-    // We must use the admin client here to bypass RLS for this server-side action.
     if (!supabaseAdmin) {
       return "Error: Admin client not available";
     }
@@ -328,7 +322,6 @@ export async function getUserCreditInfo(userFromClient?: User | null): Promise<s
     
     if (error || !userProfile) {
         console.error("Error fetching user profile for header:", error);
-        // Fallback for when profile is not found, maybe it's still being created
         return "5 pages remaining"; 
     }
 
@@ -346,5 +339,3 @@ export async function getUserCreditInfo(userFromClient?: User | null): Promise<s
             return `${userProfile.credits ?? 0} pages remaining`;
     }
 }
-
-    

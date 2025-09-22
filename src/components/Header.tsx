@@ -45,36 +45,34 @@ export function Header() {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
-
     window.addEventListener("scroll", handleScroll);
 
-    // Initial check on page load
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        updateCreditInfo(currentUser);
+      }
+    );
+
+    // Initial check
     supabase.auth.getSession().then(({ data: { session } }) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       updateCreditInfo(currentUser);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        await updateCreditInfo(currentUser);
-      }
-    );
-    
-    // Refresh credits when tab is focused or a custom event is dispatched
-    const handleFocus = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      await updateCreditInfo(session?.user ?? null);
-    }
+    const handleFocus = () => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            updateCreditInfo(session?.user ?? null);
+        });
+    };
     window.addEventListener('focus', handleFocus);
-
-
+    
     return () => {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener('focus', handleFocus);
-      subscription?.unsubscribe();
+      authListener?.subscription.unsubscribe();
     };
   }, [updateCreditInfo]);
 
@@ -93,8 +91,7 @@ export function Header() {
     if (!supabase) return;
     await supabase.auth.signOut();
     setUser(null);
-    // After logout, manually update credit info for anonymous user
-    setCreditInfo("1 page remaining");
+    updateCreditInfo(null);
   };
 
   const userInitial = user?.user_metadata?.full_name?.charAt(0).toUpperCase() ?? user?.email?.charAt(0).toUpperCase() ?? '?';
@@ -195,5 +192,3 @@ export function Header() {
     </>
   );
 }
-
-    

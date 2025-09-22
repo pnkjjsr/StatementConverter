@@ -99,15 +99,22 @@ export function StatementConverter({ user }: StatementConverterProps) {
             const result = await convertPdf({ pdfDataUri, isAnonymous: !user });
 
             if (result.error) {
-              // This is a controlled error from the server, like rate-limiting
               setErrorMessage(result.error);
               setStatus("error");
-              toast({
-                  variant: "destructive",
-                  title: "Conversion Limit Reached",
-                  description: result.error,
-              });
-              setIsPricingModalOpen(true);
+              if (result.error.includes("limit")) {
+                 toast({
+                    variant: "destructive",
+                    title: "Conversion Limit Reached",
+                    description: result.error,
+                });
+                setIsPricingModalOpen(true);
+              } else {
+                 toast({
+                    variant: "destructive",
+                    title: "Conversion Failed",
+                    description: result.error,
+                });
+              }
               return;
             }
 
@@ -118,6 +125,7 @@ export function StatementConverter({ user }: StatementConverterProps) {
             setTotalTokens(result.totalTokens || 0);
             setStatus("success");
             
+            // This is the key to updating the header count.
             window.dispatchEvent(new Event('focus'));
 
             toast({
