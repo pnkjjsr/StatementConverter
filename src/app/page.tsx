@@ -5,6 +5,7 @@ import { StatementConverter } from "@/components/StatementConverter";
 import { Contact } from "@/components/Contact";
 import { AnimatedSection } from "@/components/AnimatedSection";
 import { HowItWorks } from "@/components/HowItWorks";
+import { Tiers } from "@/components/Tiers";
 
 export default function Home() {
   return (
@@ -22,6 +23,7 @@ export default function Home() {
           <StatementConverter />
         </AnimatedSection>
         <Features />
+        <Tiers />
         <Contact />
       </div>
     </>
