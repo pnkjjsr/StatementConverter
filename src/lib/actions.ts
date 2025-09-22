@@ -5,8 +5,10 @@ import { extractDataFromPdf } from "@/ai/flows/extract-data-from-pdf";
 import { transformExtractedData } from "@/ai/flows/transform-extracted-data";
 import { z } from "zod";
 import { supabase, supabaseAdmin } from "./supabase";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { createClient, type User } from "@supabase/supabase-js";
+import { createHash } from 'crypto';
+
 
 async function getServerUser(): Promise<User | null> {
     const cookieStore = cookies();
@@ -35,7 +37,6 @@ const convertPdfSchema = z.object({
 
 export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   const validatedInput = convertPdfSchema.safeParse(input);
-  const cookieStore = cookies();
 
   if (!validatedInput.success) {
     throw new Error("Invalid input: A valid PDF data URI is required.");
@@ -44,10 +45,32 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   const user = await getServerUser();
 
   if (validatedInput.data.isAnonymous) {
-      const hasConvertedCookie = cookieStore.get('hasConvertedAnonymously');
-      if (hasConvertedCookie?.value === 'true') {
-        throw new Error("You have already used your free conversion. Please create an account to convert more documents.");
+      if (!supabaseAdmin) {
+        throw new Error("Application is not configured for usage tracking.");
       }
+
+      const headersList = headers();
+      const ipAddress = headersList.get("x-forwarded-for") ?? '127.0.0.1';
+      const ipHash = createHash('sha256').update(ipAddress).digest('hex');
+
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+      const { data: recentUsage, error: usageError } = await supabaseAdmin
+        .from('sc_anonymous_usage')
+        .select('id')
+        .eq('ip_hash', ipHash)
+        .gt('created_at', twentyFourHoursAgo)
+        .limit(1);
+      
+      if (usageError) {
+        console.error("Error checking anonymous usage:", usageError);
+        // Fail open in case of db error, but log it.
+      }
+      
+      if (recentUsage && recentUsage.length > 0) {
+        throw new Error("You have reached the free conversion limit for today. Please create an account to convert more documents.");
+      }
+
   } else if (user) {
     if (!supabaseAdmin) {
       throw new Error("Application is not configured for user management.");
@@ -103,7 +126,19 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
 
     // If conversion was successful, handle credit/usage update
     if (validatedInput.data.isAnonymous) {
-        cookieStore.set('hasConvertedAnonymously', 'true', { maxAge: 60 * 60 * 24 }); // Expires in 24 hours
+      if(supabaseAdmin) {
+        const headersList = headers();
+        const ipAddress = headersList.get("x-forwarded-for") ?? '127.0.0.1';
+        const ipHash = createHash('sha256').update(ipAddress).digest('hex');
+        
+        const { error: insertError } = await supabaseAdmin
+          .from('sc_anonymous_usage')
+          .insert({ ip_hash: ipHash });
+
+        if (insertError) {
+            console.error('Failed to log anonymous usage:', insertError);
+        }
+      }
     } else if (user && supabaseAdmin) {
       const { data: userProfile, error: profileError } = await supabaseAdmin
         .from('sc_users')
@@ -261,9 +296,26 @@ export async function getUserCreditInfo(userFromClient?: User | null): Promise<s
     const user = userFromClient ?? await getServerUser();
 
     if (!user) {
-        // This server action returns a default for when no user is found.
-        const hasConverted = cookies().get('hasConvertedAnonymously')?.value === 'true';
-        return hasConverted ? "0 pages remaining" : "1 page remaining";
+        if (supabaseAdmin) {
+            const headersList = headers();
+            const ipAddress = headersList.get("x-forwarded-for") ?? '127.0.0.1';
+            const ipHash = createHash('sha256').update(ipAddress).digest('hex');
+            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            
+            const { data: recentUsage, error } = await supabaseAdmin
+                .from('sc_anonymous_usage')
+                .select('id')
+                .eq('ip_hash', ipHash)
+                .gt('created_at', twentyFourHoursAgo)
+                .limit(1);
+
+            if (error) {
+                console.error("Error checking anonymous usage for header:", error);
+                return "1 page remaining";
+            }
+            return (recentUsage && recentUsage.length > 0) ? "0 pages remaining" : "1 page remaining";
+        }
+        return "1 page remaining";
     }
 
     // We must use the admin client here to bypass RLS for this server-side action.
