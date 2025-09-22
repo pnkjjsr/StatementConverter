@@ -24,6 +24,7 @@ import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
 import { AuthModal } from "./AuthModal";
 import { PricingModal } from "./PricingModal";
 import { Badge } from "./ui/badge";
+import { getUserCreditInfo } from "@/lib/actions";
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -41,52 +42,30 @@ export function Header() {
 
     window.addEventListener("scroll", handleScroll);
 
-    const updateUserState = (session: Session | null) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      
-      if (currentUser) {
-        const plan = currentUser.user_metadata?.plan;
-        const credits = currentUser.user_metadata?.credits;
+    const updateCreditInfo = () => {
+        getUserCreditInfo().then(setCreditInfo);
+    };
 
-        switch (plan) {
-          case 'Starter':
-            setCreditInfo('400 pages/month');
-            break;
-          case 'Professional':
-            setCreditInfo('1000 pages/month');
-            break;
-          case 'Business':
-            setCreditInfo('4000 pages/month');
-            break;
-          case 'Enterprise':
-            setCreditInfo('Custom plan');
-            break;
-          default:
-            // Registered user with no plan
-            setCreditInfo(credits ? `${credits} pages remaining` : '5 pages remaining');
-            break;
-        }
+    const { data: { subscription } } = supabase?.auth.onAuthStateChange((_event, session) => {
+        setUser(session?.user ?? null);
+        updateCreditInfo();
         if (session?.user) {
           setIsAuthModalOpen(false);
         }
-      } else {
-        // Anonymous user
-        setCreditInfo("1 page remaining");
-      }
-    };
-    
-    const { data: { subscription } } = supabase?.auth.onAuthStateChange((_event, session) => {
-      updateUserState(session);
     }) ?? { data: { subscription: null } };
 
-    // Check initial session
+    // Initial check
     supabase?.auth.getSession().then(({ data: { session } }) => {
-      updateUserState(session);
+      setUser(session?.user ?? null);
+      updateCreditInfo();
     });
+
+    // Also update when window is focused, in case user bought credits in another tab
+    window.addEventListener('focus', updateCreditInfo);
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener('focus', updateCreditInfo);
       subscription?.unsubscribe();
     };
   }, []);
@@ -108,7 +87,7 @@ export function Header() {
     setUser(null);
   };
 
-  const userInitial = user?.email?.charAt(0).toUpperCase() ?? '?';
+  const userInitial = user?.user_metadata?.full_name?.charAt(0).toUpperCase() ?? user?.email?.charAt(0).toUpperCase() ?? '?';
 
   const authLinks = (
     <>

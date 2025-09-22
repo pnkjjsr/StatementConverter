@@ -4,7 +4,21 @@
 import { extractDataFromPdf } from "@/ai/flows/extract-data-from-pdf";
 import { transformExtractedData } from "@/ai/flows/transform-extracted-data";
 import { z } from "zod";
-import { supabase } from "./supabase";
+import { supabase, supabaseAdmin } from "./supabase";
+import { cookies } from "next/headers";
+import type { User } from "@supabase/supabase-js";
+
+async function getUser(): Promise<User | null> {
+    const cookieStore = cookies();
+    const client = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { cookies: { getAll: () => cookieStore.getAll() } }
+    );
+    const { data: { user } } = await client.auth.getUser();
+    return user;
+}
+
 
 const convertPdfSchema = z.object({
   pdfDataUri: z.string().startsWith("data:application/pdf;base64,"),
@@ -16,6 +30,31 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   if (!validatedInput.success) {
     throw new Error("Invalid input: A valid PDF data URI is required.");
   }
+
+  const user = await getUser();
+
+  if (!user) {
+    // For now, allow anonymous users one-shot access.
+    // In a real scenario, we'd implement IP-based or fingerprint-based limiting.
+  } else {
+    if (!supabaseAdmin) {
+      throw new Error("Application is not configured for user management.");
+    }
+    const { data: userProfile, error: profileError } = await supabaseAdmin
+      .from('sc_users')
+      .select('credits, plan')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !userProfile) {
+      throw new Error("Could not retrieve user profile.");
+    }
+
+    if (userProfile.plan === 'Free' && userProfile.credits <= 0) {
+      throw new Error("You have no more credits. Please upgrade your plan to convert more documents.");
+    }
+  }
+
 
   try {
     let totalTokens = 0;
@@ -45,6 +84,24 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
     if (transformationResult.tokenUsage) {
         totalTokens += transformationResult.tokenUsage.totalTokens;
     }
+
+    // If conversion was successful, and the user is logged in and on a free plan, decrement their credits.
+    if (user && supabaseAdmin) {
+      const { data: userProfile, error: profileError } = await supabaseAdmin
+        .from('sc_users')
+        .select('plan')
+        .eq('id', user.id)
+        .single();
+      
+      if (userProfile && userProfile.plan === 'Free') {
+        const { error: decrementError } = await supabaseAdmin.rpc('decrement_credits', { p_user_id: user.id });
+        if (decrementError) {
+          console.error("Failed to decrement credits:", decrementError);
+          // Don't block the user, but log the issue.
+        }
+      }
+    }
+
 
     return { 
         standardizedData: transformationResult.standardizedData,
@@ -114,14 +171,11 @@ export async function sendInvites(input: z.infer<typeof sendInviteSchema>) {
         throw new Error('Invalid input: ' + JSON.stringify(validatedInput.error.flatten().fieldErrors));
     }
 
-    // In a real app, you would integrate with an email service like Resend or SendGrid here.
-    // For now, we will just log the invites to the console.
     console.log("Sending invites:", {
         invites: validatedInput.data.invites,
         referralLink: validatedInput.data.referralLink,
     });
     
-    // Simulate sending emails
     for (const invite of validatedInput.data.invites) {
         console.log(`Simulating sending email to ${invite.name} at ${invite.email}`);
         console.log(`Message: Hey ${invite.name}, check out this cool service! ${validatedInput.data.referralLink}`);
@@ -140,7 +194,7 @@ const signupSchema = z.object({
 });
 
 export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
-  if (!supabase) {
+  if (!supabase || !supabaseAdmin) {
     return { error: 'Supabase client is not configured.' };
   }
 
@@ -151,23 +205,12 @@ export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
   
   const { email, password, firstName, lastName, referralCode } = validatedInput.data;
 
-  // We need to use the admin client to update another user's credits.
-  // This should be done in a secure Supabase Edge Function.
-  // For now, the signup will just proceed and store the referral info.
-
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
-        first_name: firstName,
-        last_name: lastName,
         full_name: `${firstName} ${lastName}`.trim(),
-        // We store who referred this user, to prevent duplicate credits.
-        referred_by: referralCode,
-        // We'll also give new users their own referral code and starting credits.
-        credits: 5, // Starting credits for a new user
-        referral_code: crypto.randomUUID(),
       },
     },
   });
@@ -176,18 +219,65 @@ export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
     return { error: authError.message };
   }
 
-  // TODO: Once the user is created, call an Edge Function to credit the referrer.
-  // This needs to be done securely on the backend.
-  // if (referralCode && authData.user) {
-  //   const { error: creditError } = await supabase.rpc('award_referral_credit', {
-  //     referrer_code: referralCode,
-  //     new_user_id: authData.user.id
-  //   });
-  //   if (creditError) {
-  //     console.error("Failed to award referral credit:", creditError);
-  //     // We don't block the signup, but we log the error.
-  //   }
-  // }
+  if (authData.user) {
+    const { error: profileError } = await supabaseAdmin.from('sc_users').insert({
+        id: authData.user.id,
+        email: authData.user.email,
+        full_name: `${firstName} ${lastName}`.trim(),
+        credits: 5,
+        plan: 'Free',
+        referral_code: crypto.randomUUID(),
+        referred_by: referralCode,
+    });
+    if (profileError) {
+        // This is a problem. The user was created in auth but not in our public table.
+        // We should probably delete the auth user to allow them to try again.
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        return { error: `Could not create user profile: ${profileError.message}` };
+    }
+
+    if (referralCode) {
+      const { error: rpcError } = await supabaseAdmin.rpc('award_referral_credit', { p_referrer_code: referralCode });
+      if (rpcError) {
+        console.error("Failed to award referral credit:", rpcError);
+        // Don't block the signup, but log the error.
+      }
+    }
+  }
+
 
   return { user: authData.user, error: null };
+}
+
+export async function getUserCreditInfo(): Promise<string> {
+    const user = await getUser();
+    if (!user) {
+        return "1 page remaining";
+    }
+
+    const { data: userProfile, error } = await supabase
+        .from('sc_users')
+        .select('credits, plan')
+        .eq('id', user.id)
+        .single();
+    
+    if (error || !userProfile) {
+        console.error("Error fetching user profile for header:", error);
+        // Fallback for when profile is not found, maybe it's still being created
+        return "5 pages remaining"; 
+    }
+
+    switch (userProfile.plan) {
+        case 'Starter':
+            return '400 pages/month';
+        case 'Professional':
+            return '1000 pages/month';
+        case 'Business':
+            return '4000 pages/month';
+        case 'Enterprise':
+            return 'Custom plan';
+        case 'Free':
+        default:
+            return `${userProfile.credits ?? 0} pages remaining`;
+    }
 }
