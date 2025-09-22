@@ -349,5 +349,3 @@ export async function getUserCreditInfo(userFromClient?: User | null): Promise<s
             return `${userProfile.credits ?? 0} pages remaining`;
     }
 }
-
-    
