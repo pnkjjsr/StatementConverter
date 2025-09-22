@@ -6,14 +6,21 @@ import { transformExtractedData } from "@/ai/flows/transform-extracted-data";
 import { z } from "zod";
 import { supabase, supabaseAdmin } from "./supabase";
 import { cookies } from "next/headers";
-import type { User } from "@supabase/supabase-js";
+import { createClient, type User } from "@supabase/supabase-js";
 
 async function getUser(): Promise<User | null> {
     const cookieStore = cookies();
     const client = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { cookies: { getAll: () => cookieStore.getAll() } }
+        {
+            auth: {
+                persistSession: false
+            },
+            cookies: { 
+                getAll: () => cookieStore.getAll() 
+            } 
+        }
     );
     const { data: { user } } = await client.auth.getUser();
     return user;
@@ -253,6 +260,10 @@ export async function getUserCreditInfo(): Promise<string> {
     const user = await getUser();
     if (!user) {
         return "1 page remaining";
+    }
+
+    if (!supabase) {
+      return "Error: client not available";
     }
 
     const { data: userProfile, error } = await supabase
