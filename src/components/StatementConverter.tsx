@@ -41,16 +41,8 @@ export function StatementConverter({ user }: StatementConverterProps) {
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isPending, startTransition] = useTransition();
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
-  const [hasConvertedAnonymously, setHasConvertedAnonymously] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (!user) {
-      const storedFlag = localStorage.getItem('hasConvertedAnonymously') === 'true';
-      setHasConvertedAnonymously(storedFlag);
-    }
-  }, [user]);
 
   const handleFileChange = (selectedFile: File | null) => {
     if (selectedFile) {
@@ -94,17 +86,6 @@ export function StatementConverter({ user }: StatementConverterProps) {
   const handleConvert = () => {
     if (!file) return;
 
-    // Anonymous user check
-    if (!user && hasConvertedAnonymously) {
-        toast({
-          variant: 'destructive',
-          title: 'Free Limit Reached',
-          description: 'Please create an account to convert more documents.',
-        });
-        setIsPricingModalOpen(true);
-        return;
-    }
-
     startTransition(async () => {
       setStatus("processing");
       setErrorMessage("");
@@ -116,20 +97,28 @@ export function StatementConverter({ user }: StatementConverterProps) {
           const pdfDataUri = reader.result as string;
           try {
             const result = await convertPdf({ pdfDataUri, isAnonymous: !user });
+
+            if (result.error) {
+              // This is a controlled error from the server, like rate-limiting
+              setErrorMessage(result.error);
+              setStatus("error");
+              toast({
+                  variant: "destructive",
+                  title: "Conversion Limit Reached",
+                  description: result.error,
+              });
+              setIsPricingModalOpen(true);
+              return;
+            }
+
             if (!result || !result.standardizedData) {
               throw new Error("Conversion returned no data.");
             }
             setConvertedData(result.standardizedData);
             setTotalTokens(result.totalTokens || 0);
             setStatus("success");
-
-            if (!user) {
-              localStorage.setItem('hasConvertedAnonymously', 'true');
-              setHasConvertedAnonymously(true);
-            }
-            // Dispatch a custom event to tell the header to refresh credits
-            window.dispatchEvent(new Event('focus'));
             
+            window.dispatchEvent(new Event('focus'));
 
             toast({
               variant: "default",
@@ -177,10 +166,14 @@ export function StatementConverter({ user }: StatementConverterProps) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     const fileName = file?.name.replace(/\.pdf$/i, ".csv") || "converted_statement.csv";
+    
+    link.href = url;
     link.setAttribute("download", fileName);
     document.body.appendChild(link);
     link.click();
+    
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleReset = () => {
@@ -317,5 +310,3 @@ export function StatementConverter({ user }: StatementConverterProps) {
     </>
   );
 }
-
-    
