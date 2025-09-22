@@ -195,11 +195,11 @@ export async function sendContactMessage(input: z.infer<typeof sendContactMessag
         throw new Error('Invalid input.');
     }
     
-    if (!supabase) {
-        throw new Error('Supabase client is not available.');
+    if (!supabaseAdmin) {
+        throw new Error('Application is not configured for messaging.');
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
         .from('sc_messages')
         .insert([
             { 
@@ -349,3 +349,5 @@ export async function getUserCreditInfo(userFromClient?: User | null): Promise<s
             return `${userProfile.credits ?? 0} pages remaining`;
     }
 }
+
+    
