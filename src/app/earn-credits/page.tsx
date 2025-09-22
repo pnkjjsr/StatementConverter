@@ -122,9 +122,12 @@ export default function EarnCreditsPage() {
         <h2 className="mt-12 text-3xl font-bold tracking-tight text-gray-900">
           Frequently Asked Questions
         </h2>
-        <p><strong>Is there a limit to how many credits I can earn?</strong><br/>Nope! The more friends you refer, the more credits you can earn. There is no limit.</p>
-        <p><strong>When do I receive my credits?</strong><br/>Credits are added to your account instantly as soon as your referred friend successfully creates and verifies their account.</p>
-        <p><strong>Can I track my referrals?</strong><br/>Currently, we don't have a dashboard to track individual referrals, but you will see your credit balance increase in your account section (coming soon!).</p>
+        <p><strong>Is there a limit to how many credits I can earn?</strong></p>
+        <p>Nope! The more friends you refer, the more credits you can earn. There is no limit.</p>
+        <p><strong>When do I receive my credits?</strong></p>
+        <p>Credits are added to your account instantly as soon as your referred friend successfully creates and verifies their account.</p>
+        <p><strong>Can I track my referrals?</strong></p>
+        <p>Currently, we don't have a dashboard to track individual referrals, but you will see your credit balance increase in your account section (coming soon!).</p>
       </div>
     </div>
     </>
