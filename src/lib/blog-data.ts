@@ -202,7 +202,7 @@ export const blogPosts: Post[] = [
   },
   {
     slug: 'unlocking-financial-insights-with-excel-pivot-tables',
-    title 'Unlocking Financial Insights with Excel PivotTables After Conversion',
+    title: 'Unlocking Financial Insights with Excel PivotTables After Conversion',
     summary: 'Converting your bank statements to Excel is just the first step. Learn how to use PivotTables to perform powerful analysis on your financial data, from monthly spending trends to category breakdowns.',
     publishedDate: '2024-07-21',
     content: `
