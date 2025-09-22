@@ -4,6 +4,7 @@
 import { extractDataFromPdf } from "@/ai/flows/extract-data-from-pdf";
 import { transformExtractedData } from "@/ai/flows/transform-extracted-data";
 import { z } from "zod";
+import { supabase } from "./supabase";
 
 const convertPdfSchema = z.object({
   pdfDataUri: z.string().startsWith("data:application/pdf;base64,"),
@@ -61,4 +62,39 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       "An unknown error occurred during the conversion process. Please check the PDF file and try again."
     );
   }
+}
+
+const sendContactMessageSchema = z.object({
+    fullName: z.string().min(1, 'Full name is required.'),
+    email: z.string().email('Please enter a valid email.'),
+    message: z.string().min(1, 'Message is required.'),
+});
+
+export async function sendContactMessage(input: z.infer<typeof sendContactMessageSchema>) {
+    const validatedInput = sendContactMessageSchema.safeParse(input);
+
+    if (!validatedInput.success) {
+        throw new Error('Invalid input.');
+    }
+    
+    if (!supabase) {
+        throw new Error('Supabase client is not available.');
+    }
+
+    const { error } = await supabase
+        .from('contact_messages')
+        .insert([
+            { 
+                full_name: validatedInput.data.fullName,
+                email: validatedInput.data.email,
+                message: validatedInput.data.message
+            },
+        ]);
+
+    if (error) {
+        console.error('Error inserting contact message:', error);
+        throw new Error('Could not save your message. Please try again later.');
+    }
+
+    return { success: true };
 }
