@@ -61,16 +61,16 @@ const tiers = {
   annual: [
     {
       name: 'Starter',
-      price: '$12',
-      priceSuffix: '/ month',
+      price: '$90',
+      priceSuffix: '/ year',
       description: 'For individuals and small projects',
       features: ['4,800 pages / year', 'Standard processing speed', 'Email support'],
       cta: 'Choose Plan',
     },
     {
       name: 'Professional',
-      price: '$24',
-      priceSuffix: '/ month',
+      price: '$180',
+      priceSuffix: '/ year',
       description: 'For professionals and growing businesses',
       features: ['12,000 pages / year', 'Priority processing', 'Priority email support', 'Access to new features'],
       cta: 'Choose Plan',
@@ -78,8 +78,8 @@ const tiers = {
     },
     {
       name: 'Business',
-      price: '$40',
-      priceSuffix: '/ month',
+      price: '$300',
+      priceSuffix: '/ year',
       description: 'For teams and larger needs',
       features: ['48,000 pages / year', 'Highest priority processing', 'Dedicated support', 'API access (soon)'],
       cta: 'Choose Plan',
