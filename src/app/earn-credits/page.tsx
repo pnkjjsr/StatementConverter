@@ -1,4 +1,3 @@
-
 // src/app/earn-credits/page.tsx
 'use client';
 
@@ -27,16 +26,13 @@ export default function EarnCreditsPage() {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
       if (session?.user) {
-        // Since we can't directly query auth.users from the client,
-        // we'll need a way to get the referral code.
-        // For now, we'll assume it's in user_metadata.
-        // A better approach would be an RPC function in Supabase.
+        // We get the referral code from the user's metadata.
         const code = session.user.user_metadata?.referral_code;
         if(code) {
             setReferralCode(code);
         } else {
-            // A placeholder until the server can provide one
-            // In a real app, you'd fetch this securely.
+            // A placeholder until the server can provide one.
+            // In a real app, this should be generated and saved on first load.
             const pseudoCode = session.user.id.substring(0, 8);
             setReferralCode(pseudoCode);
         }

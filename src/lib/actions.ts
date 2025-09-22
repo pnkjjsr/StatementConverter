@@ -105,7 +105,7 @@ const signupSchema = z.object({
   password: z.string().min(8),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  referralCode: z.string().uuid().nullable(),
+  referralCode: z.string().nullable(),
 });
 
 export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
@@ -115,14 +115,14 @@ export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
 
   const validatedInput = signupSchema.safeParse(input);
   if (!validatedInput.success) {
-    return { error: 'Invalid input: ' + validatedInput.error.flatten().fieldErrors };
+    return { error: 'Invalid input: ' + JSON.stringify(validatedInput.error.flatten().fieldErrors) };
   }
   
   const { email, password, firstName, lastName, referralCode } = validatedInput.data;
 
-  // We need to use the admin client to update another user's credits
-  // For this, we'll create a Supabase Edge Function (RPC) later.
-  // For now, the signup will just proceed. The credit logic is a TODO.
+  // We need to use the admin client to update another user's credits.
+  // This should be done in a secure Supabase Edge Function.
+  // For now, the signup will just proceed and store the referral info.
 
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
@@ -132,8 +132,11 @@ export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
         first_name: firstName,
         last_name: lastName,
         full_name: `${firstName} ${lastName}`.trim(),
-        // We'll store who referred this user, to prevent duplicate credits.
+        // We store who referred this user, to prevent duplicate credits.
         referred_by: referralCode,
+        // We'll also give new users their own referral code and starting credits.
+        credits: 5, // Starting credits for a new user
+        referral_code: crypto.randomUUID(),
       },
     },
   });
@@ -157,4 +160,3 @@ export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
 
   return { user: authData.user, error: null };
 }
-
