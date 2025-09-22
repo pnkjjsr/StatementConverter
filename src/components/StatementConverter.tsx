@@ -126,6 +126,8 @@ export function StatementConverter({ user }: StatementConverterProps) {
             if (!user) {
               localStorage.setItem('hasConvertedAnonymously', 'true');
               setHasConvertedAnonymously(true);
+              // Dispatch a custom event to tell the header to refresh credits
+              window.dispatchEvent(new Event('focus'));
             }
 
             toast({

@@ -63,7 +63,7 @@ export function Header() {
       }
     );
     
-    // Refresh credits when tab is focused
+    // Refresh credits when tab is focused or a custom event is dispatched
     const handleFocus = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       await updateCreditInfo(session?.user ?? null);
