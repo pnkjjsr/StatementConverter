@@ -98,3 +98,63 @@ export async function sendContactMessage(input: z.infer<typeof sendContactMessag
 
     return { success: true };
 }
+
+
+const signupSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  referralCode: z.string().uuid().nullable(),
+});
+
+export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
+  if (!supabase) {
+    return { error: 'Supabase client is not configured.' };
+  }
+
+  const validatedInput = signupSchema.safeParse(input);
+  if (!validatedInput.success) {
+    return { error: 'Invalid input: ' + validatedInput.error.flatten().fieldErrors };
+  }
+  
+  const { email, password, firstName, lastName, referralCode } = validatedInput.data;
+
+  // We need to use the admin client to update another user's credits
+  // For this, we'll create a Supabase Edge Function (RPC) later.
+  // For now, the signup will just proceed. The credit logic is a TODO.
+
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        first_name: firstName,
+        last_name: lastName,
+        full_name: `${firstName} ${lastName}`.trim(),
+        // We'll store who referred this user, to prevent duplicate credits.
+        referred_by: referralCode,
+      },
+    },
+  });
+
+  if (authError) {
+    return { error: authError.message };
+  }
+
+  // TODO: Once the user is created, call an Edge Function to credit the referrer.
+  // This needs to be done securely on the backend.
+  // if (referralCode && authData.user) {
+  //   const { error: creditError } = await supabase.rpc('award_referral_credit', {
+  //     referrer_code: referralCode,
+  //     new_user_id: authData.user.id
+  //   });
+  //   if (creditError) {
+  //     console.error("Failed to award referral credit:", creditError);
+  //     // We don't block the signup, but we log the error.
+  //   }
+  // }
+
+  return { user: authData.user, error: null };
+}
+

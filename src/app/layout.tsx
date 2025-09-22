@@ -35,7 +35,7 @@ export default function RootLayout({
             <div className="flex flex-col md:flex-row justify-between items-center">
               <p className="mb-4 md:mb-0">&copy; {new Date().getFullYear()} Bank Statement Converter Ltd. All rights reserved.</p>
               <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
-                <a href="#" className="hover:text-primary transition-colors">Earn Credits</a>
+                <a href="/earn-credits" className="hover:text-primary transition-colors">Earn Credits</a>
                 <a href="/about" className="hover:text-primary transition-colors">About</a>
                 <a href="/terms" className="hovertext-primary transition-colors">Terms</a>
                 <a href="/privacy" className="hover:text-primary transition-colors">Privacy</a>
