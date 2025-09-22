@@ -33,9 +33,9 @@ export function AuthModal({ open, onOpenChange, initialView = 'login' }: AuthMod
           </DialogDescription>
         </DialogHeader>
         {view === 'login' ? (
-          <LoginForm onSwitchView={() => setView('signup')} />
+          <LoginForm onSwitchView={() => setView('signup')} onOpenChange={onOpenChange} />
         ) : (
-          <SignupForm onSwitchView={() => setView('login')} />
+          <SignupForm onSwitchView={() => setView('login')} onOpenChange={onOpenChange} />
         )}
       </DialogContent>
     </Dialog>
