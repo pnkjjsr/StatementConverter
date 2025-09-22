@@ -154,7 +154,7 @@ export async function sendContactMessage(input: z.infer<typeof sendContactMessag
     }
 
     const { error } = await supabase
-        .from('contact_messages')
+        .from('sc_messages')
         .insert([
             { 
                 full_name: validatedInput.data.fullName,
@@ -227,28 +227,26 @@ export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
   }
 
   if (authData.user) {
-    const { error: profileError } = await supabaseAdmin.from('sc_users').insert({
-        id: authData.user.id,
-        email: authData.user.email,
-        full_name: `${firstName} ${lastName}`.trim(),
-        credits: 5,
-        plan: 'Free',
-        referral_code: crypto.randomUUID(),
-        referred_by: referralCode,
-    });
-    if (profileError) {
-        // This is a problem. The user was created in auth but not in our public table.
-        // We should probably delete the auth user to allow them to try again.
-        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-        return { error: `Could not create user profile: ${profileError.message}` };
-    }
+    // This is handled by the trigger `on_auth_user_created` now.
+    // The trigger will create an entry in `sc_users`.
+    // We just need to handle the referral part.
 
+    // If there was a referral, we may need to update the `referred_by` column
+    // and award credit. The trigger can't access the referral code from the client.
     if (referralCode) {
-      const { error: rpcError } = await supabaseAdmin.rpc('award_referral_credit', { p_referrer_code: referralCode });
-      if (rpcError) {
-        console.error("Failed to award referral credit:", rpcError);
-        // Don't block the signup, but log the error.
-      }
+        const { error: updateError } = await supabaseAdmin
+            .from('sc_users')
+            .update({ referred_by: referralCode })
+            .eq('id', authData.user.id);
+
+        if (updateError) {
+            console.error('Failed to update referred_by:', updateError);
+        }
+
+        const { error: rpcError } = await supabaseAdmin.rpc('award_referral_credit', { p_referrer_code: referralCode });
+        if (rpcError) {
+            console.error("Failed to award referral credit:", rpcError);
+        }
     }
   }
 
