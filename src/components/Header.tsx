@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -16,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
@@ -35,11 +36,10 @@ export function Header() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [creditInfo, setCreditInfo] = useState<string>("1 page remaining");
 
-  const updateCreditInfo = async (currentUser: SupabaseUser | null) => {
-    // We now pass the user object to the server action to avoid race conditions.
+  const updateCreditInfo = useCallback(async (currentUser: SupabaseUser | null) => {
     const info = await getUserCreditInfo(currentUser);
     setCreditInfo(info);
-  };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -59,8 +59,6 @@ export function Header() {
       async (_event, session) => {
         const currentUser = session?.user ?? null;
         setUser(currentUser);
-        // This is the key change: we call updateCreditInfo *after* setting the new user,
-        // and we pass the new user object directly.
         await updateCreditInfo(currentUser);
       }
     );
@@ -78,7 +76,7 @@ export function Header() {
       window.removeEventListener('focus', handleFocus);
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [updateCreditInfo]);
 
   const handleAuthModalOpen = (view: "login" | "signup") => {
     setAuthModalView(view);
