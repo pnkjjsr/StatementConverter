@@ -64,7 +64,7 @@ const tiers = {
       price: '$12',
       priceSuffix: '/ month',
       description: 'For individuals and small projects',
-      features: ['400 pages / month', 'Standard processing speed', 'Email support'],
+      features: ['4,800 pages / year', 'Standard processing speed', 'Email support'],
       cta: 'Choose Plan',
     },
     {
@@ -72,7 +72,7 @@ const tiers = {
       price: '$24',
       priceSuffix: '/ month',
       description: 'For professionals and growing businesses',
-      features: ['1000 pages / month', 'Priority processing', 'Priority email support', 'Access to new features'],
+      features: ['12,000 pages / year', 'Priority processing', 'Priority email support', 'Access to new features'],
       cta: 'Choose Plan',
       popular: true,
     },
@@ -81,7 +81,7 @@ const tiers = {
       price: '$40',
       priceSuffix: '/ month',
       description: 'For teams and larger needs',
-      features: ['4000 pages / month', 'Highest priority processing', 'Dedicated support', 'API access (soon)'],
+      features: ['48,000 pages / year', 'Highest priority processing', 'Dedicated support', 'API access (soon)'],
       cta: 'Choose Plan',
     },
     {
