@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useTransition, type DragEvent } from "react";
+import { useState, useRef, useTransition, type DragEvent, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -23,10 +23,16 @@ import {
 import { convertPdf } from "@/lib/actions";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import type { User } from "@supabase/supabase-js";
+import { PricingModal } from "./PricingModal";
 
 type Status = "idle" | "file-selected" | "processing" | "success" | "error";
 
-export function StatementConverter() {
+interface StatementConverterProps {
+    user: User | null;
+}
+
+export function StatementConverter({ user }: StatementConverterProps) {
   const [status, setStatus] = useState<Status>("idle");
   const [file, setFile] = useState<File | null>(null);
   const [convertedData, setConvertedData] = useState<string>("");
@@ -34,6 +40,7 @@ export function StatementConverter() {
   const [totalTokens, setTotalTokens] = useState<number>(0);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isPending, startTransition] = useTransition();
+  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -79,6 +86,20 @@ export function StatementConverter() {
   const handleConvert = () => {
     if (!file) return;
 
+    // Anonymous user check
+    if (!user) {
+      const hasConverted = localStorage.getItem('hasConvertedAnonymously') === 'true';
+      if (hasConverted) {
+        toast({
+          variant: 'destructive',
+          title: 'Free Limit Reached',
+          description: 'Please create an account to convert more documents.',
+        });
+        setIsPricingModalOpen(true);
+        return;
+      }
+    }
+
     startTransition(async () => {
       setStatus("processing");
       setErrorMessage("");
@@ -89,13 +110,18 @@ export function StatementConverter() {
         reader.onload = async () => {
           const pdfDataUri = reader.result as string;
           try {
-            const result = await convertPdf({ pdfDataUri });
+            const result = await convertPdf({ pdfDataUri, isAnonymous: !user });
             if (!result || !result.standardizedData) {
               throw new Error("Conversion returned no data.");
             }
             setConvertedData(result.standardizedData);
             setTotalTokens(result.totalTokens || 0);
             setStatus("success");
+
+            if (!user) {
+              localStorage.setItem('hasConvertedAnonymously', 'true');
+            }
+
             toast({
               variant: "default",
               className: "bg-accent text-accent-foreground",
@@ -273,10 +299,13 @@ export function StatementConverter() {
   };
 
   return (
-    <Card className="w-full bg-white/90 backdrop-blur-sm shadow-sm">
-      <CardContent className="p-2">
-        {renderContent()}
-      </CardContent>
-    </Card>
+    <>
+      <PricingModal open={isPricingModalOpen} onOpenChange={setIsPricingModalOpen} />
+      <Card className="w-full bg-white/90 backdrop-blur-sm shadow-sm">
+        <CardContent className="p-2">
+          {renderContent()}
+        </CardContent>
+      </Card>
+    </>
   );
 }

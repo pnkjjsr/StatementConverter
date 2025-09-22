@@ -30,6 +30,7 @@ async function getServerUser(): Promise<User | null> {
 
 const convertPdfSchema = z.object({
   pdfDataUri: z.string().startsWith("data:application/pdf;base64,"),
+  isAnonymous: z.boolean(),
 });
 
 export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
@@ -41,10 +42,11 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
 
   const user = await getServerUser();
 
-  if (!user) {
-    // For now, allow anonymous users one-shot access.
-    // In a real scenario, we'd implement IP-based or fingerprint-based limiting.
-  } else {
+  if (validatedInput.data.isAnonymous) {
+      // Logic for anonymous users is handled client-side with localStorage.
+      // This server-side block is a fallback/additional check if needed,
+      // but for now we trust the client-side gate for anonymous users.
+  } else if (user) {
     if (!supabaseAdmin) {
       throw new Error("Application is not configured for user management.");
     }
@@ -61,6 +63,10 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
     if (userProfile.plan === 'Free' && userProfile.credits <= 0) {
       throw new Error("You have no more credits. Please upgrade your plan to convert more documents.");
     }
+  } else {
+    // This case happens if isAnonymous is false but we can't find a user.
+    // It's a security measure.
+    throw new Error("You must be logged in to perform this action.");
   }
 
 
@@ -93,7 +99,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
         totalTokens += transformationResult.tokenUsage.totalTokens;
     }
 
-    // If conversion was successful, and the user is logged in and on a free plan, decrement their credits.
+    // If conversion was successful, and the user is logged in, decrement their credits.
     if (user && supabaseAdmin) {
       const { data: userProfile, error: profileError } = await supabaseAdmin
         .from('sc_users')
@@ -251,7 +257,11 @@ export async function getUserCreditInfo(userFromClient: User | null): Promise<st
     const user = userFromClient ?? await getServerUser();
 
     if (!user) {
-        return "1 page remaining";
+        // Client-side logic will use localStorage to check if the 1 free page has been used.
+        // If not used, it will show "1 page remaining".
+        // This server action returns a default for when no user is found.
+        const hasConverted = cookies().get('hasConvertedAnonymously')?.value === 'true';
+        return hasConverted ? "0 pages remaining" : "1 page remaining";
     }
 
     // We must use the admin client here to bypass RLS for this server-side action.

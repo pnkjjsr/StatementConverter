@@ -1,4 +1,5 @@
 
+'use client';
 
 import { Features } from "@/components/Features";
 import { StatementConverter } from "@/components/StatementConverter";
@@ -7,8 +8,31 @@ import { AnimatedSection } from "@/components/AnimatedSection";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Tiers } from "@/components/Tiers";
 import { Faq } from "@/components/Faq";
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
 export default function Home() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
+
+
   return (
     <>
       <div className="flex flex-1 flex-col items-center justify-center p-4 relative z-10">
@@ -21,7 +45,7 @@ export default function Home() {
           </p>
         </AnimatedSection>
         <AnimatedSection className="w-full max-w-2xl text-center" delay={0.2}>
-          <StatementConverter />
+          <StatementConverter user={user} />
         </AnimatedSection>
         <Features />
         <Tiers />
