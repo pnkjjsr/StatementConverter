@@ -10,6 +10,7 @@ import { createClient, type User } from "@supabase/supabase-js";
 
 async function getUser(): Promise<User | null> {
     const cookieStore = cookies();
+    // This client is safe to use on the server because it uses the user's cookie.
     const client = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -212,12 +213,14 @@ export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
   
   const { email, password, firstName, lastName, referralCode } = validatedInput.data;
 
+  // Sign up the user via the client SDK to get a session
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
         full_name: `${firstName} ${lastName}`.trim(),
+        referral_code: referralCode, // Pass referral code to trigger
       },
     },
   });
@@ -225,29 +228,19 @@ export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
   if (authError) {
     return { error: authError.message };
   }
-
-  if (authData.user) {
-    // This is handled by the trigger `on_auth_user_created` now.
-    // The trigger will create an entry in `sc_users`.
-    // We just need to handle the referral part.
-
-    // If there was a referral, we may need to update the `referred_by` column
-    // and award credit. The trigger can't access the referral code from the client.
-    if (referralCode) {
-        const { error: updateError } = await supabaseAdmin
-            .from('sc_users')
-            .update({ referred_by: referralCode })
-            .eq('id', authData.user.id);
-
-        if (updateError) {
-            console.error('Failed to update referred_by:', updateError);
-        }
-
+  
+  // The on_auth_user_created trigger will handle inserting into sc_users.
+  // We still need to handle awarding credit to the referrer, which the trigger can't do.
+  if (authData.user && referralCode) {
+      try {
         const { error: rpcError } = await supabaseAdmin.rpc('award_referral_credit', { p_referrer_code: referralCode });
         if (rpcError) {
             console.error("Failed to award referral credit:", rpcError);
+            // Non-critical error, don't block signup
         }
-    }
+      } catch(e) {
+        console.error("Exception awarding referral credit:", e)
+      }
   }
 
 

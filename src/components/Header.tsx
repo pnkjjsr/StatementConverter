@@ -26,6 +26,43 @@ import { PricingModal } from "./PricingModal";
 import { Badge } from "./ui/badge";
 import { getUserCreditInfo } from "@/lib/actions";
 
+async function fetchUserCreditInfo(user: SupabaseUser | null): Promise<string> {
+    if (!user) {
+        return "1 page remaining";
+    }
+
+    if (!supabase) {
+      return "Error: client not available";
+    }
+
+    const { data: userProfile, error } = await supabase
+        .from('sc_users')
+        .select('credits, plan')
+        .eq('id', user.id)
+        .single();
+    
+    if (error || !userProfile) {
+        console.error("Error fetching user profile for header:", error);
+        // Fallback for when profile is not found, maybe it's still being created
+        return "5 pages remaining"; 
+    }
+
+    switch (userProfile.plan) {
+        case 'Starter':
+            return '400 pages/month';
+        case 'Professional':
+            return '1000 pages/month';
+        case 'Business':
+            return '4000 pages/month';
+        case 'Enterprise':
+            return 'Custom plan';
+        case 'Free':
+        default:
+            return `${userProfile.credits ?? 0} pages remaining`;
+    }
+}
+
+
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -35,8 +72,8 @@ export function Header() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [creditInfo, setCreditInfo] = useState<string>("1 page remaining");
 
-  const updateCreditInfo = async () => {
-    const info = await getUserCreditInfo();
+  const updateCreditInfo = async (currentUser: SupabaseUser | null) => {
+    const info = await fetchUserCreditInfo(currentUser);
     setCreditInfo(info);
   };
 
@@ -46,30 +83,37 @@ export function Header() {
     };
 
     window.addEventListener("scroll", handleScroll);
-    window.addEventListener('focus', updateCreditInfo);
 
-    // Run on initial mount
+    // Initial check
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      updateCreditInfo();
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      updateCreditInfo(currentUser);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
-        updateCreditInfo();
-        if (session?.user) {
-          setIsAuthModalOpen(false);
-        }
+      async (_event, session) => {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        // Use a small delay to allow server-side session to propagate if needed,
+        // but direct client-side fetch should be faster.
+        await updateCreditInfo(currentUser);
       }
     );
 
+    const handleFocus = () => {
+        if(user) {
+            updateCreditInfo(user);
+        }
+    }
+    window.addEventListener('focus', handleFocus);
+
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener('focus', updateCreditInfo);
+      window.removeEventListener('focus', handleFocus);
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [user]);
 
   const handleAuthModalOpen = (view: "login" | "signup") => {
     setAuthModalView(view);
@@ -86,6 +130,8 @@ export function Header() {
     if (!supabase) return;
     await supabase.auth.signOut();
     setUser(null);
+    // After logout, manually update credit info for anonymous user
+    setCreditInfo("1 page remaining");
   };
 
   const userInitial = user?.user_metadata?.full_name?.charAt(0).toUpperCase() ?? user?.email?.charAt(0).toUpperCase() ?? '?';
