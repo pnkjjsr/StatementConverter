@@ -101,78 +101,80 @@ export default function EarnCreditsPage() {
   return (
     <>
      <AuthModal open={isAuthModalOpen} onOpenChange={setIsAuthModalOpen} initialView="signup" />
-    <div className="relative z-10 mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-          Earn Free Credits
-        </h1>
-        <p className="mt-4 text-xl text-gray-500 max-w-2xl mx-auto">
-          Love our service? Share it with your friends and earn credits for every successful referral!
-        </p>
-      </div>
+      <div className="relative z-10 mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+            Earn Free Credits
+          </h1>
+          <p className="mt-4 text-xl text-gray-500 max-w-2xl mx-auto">
+            Love our service? Share it with your friends and earn credits for every successful referral!
+          </p>
+        </div>
 
-      <Card className="mt-12">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">Your Referral Link</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center">
-          {loading ? (
-            <p>Loading your referral link...</p>
-          ) : user && referralLink ? (
-            <div className="flex flex-col items-center gap-6">
-              <p className="text-muted-foreground">Share this link. When someone signs up, you get 10 extra page credits.</p>
-              <div className="flex w-full max-w-md items-center space-x-2">
-                <Input type="text" value={referralLink} readOnly className="text-center"/>
-                <Button type="button" size="icon" onClick={copyToClipboard}>
-                  <Copy className="h-4 w-4" />
-                </Button>
+        <Card className="mt-12">
+          <CardHeader>
+            <CardTitle className="text-2xl text-center">Your Referral Link</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            {loading ? (
+              <p>Loading your referral link...</p>
+            ) : user && referralLink ? (
+              <div className="flex flex-col items-center gap-6">
+                <p className="text-muted-foreground">Share this link. When someone signs up, you get 10 extra page credits.</p>
+                <div className="flex w-full max-w-md items-center space-x-2">
+                  <Input type="text" value={referralLink} readOnly className="text-center"/>
+                  <Button type="button" size="icon" onClick={copyToClipboard}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                  <div className="w-full max-w-md">
+                      <CardDescription className="text-center mb-4 font-semibold">Or share directly</CardDescription>
+                      <div className="flex justify-center gap-3">
+                      {socialShareButtons.map(({ Button: ShareButton, Icon, props }, index) => (
+                          <ShareButton key={index} {...props}>
+                          <Icon size={40} round />
+                          </ShareButton>
+                      ))}
+                      </div>
+                  </div>
+
+                  <div className="w-full max-w-2xl">
+                      <InviteFriendForm referralLink={referralLink} />
+                  </div>
               </div>
-
-                <div className="w-full max-w-md">
-                    <CardDescription className="text-center mb-4 font-semibold">Or share directly</CardDescription>
-                    <div className="flex justify-center gap-3">
-                    {socialShareButtons.map(({ Button: ShareButton, Icon, props }, index) => (
-                        <ShareButton key={index} {...props}>
-                        <Icon size={40} round />
-                        </ShareButton>
-                    ))}
-                    </div>
-                </div>
-
-                <div className="w-full max-w-2xl">
-                    <InviteFriendForm referralLink={referralLink} />
-                </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-4">
-              <p className="text-muted-foreground">Sign up or log in to get your unique referral link.</p>
-              <Button onClick={() => setIsAuthModalOpen(true)}>Get Your Link</Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="prose prose-lg mx-auto mt-12">
-        <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-          How It Works
-        </h2>
-        <ol className="list-decimal list-inside space-y-4">
-          <li><strong>Share Your Link:</strong> Copy your unique referral link above and share it with friends, colleagues, or on social media.</li>
-          <li><strong>Friend Signs Up:</strong> When someone clicks your link and signs up for a free account, they become your referral.</li>
-          <li><strong>You Earn Credits:</strong> For every successful sign-up, we'll automatically add 10 page credits to your account balance. It's that simple!</li>
-        </ol>
-
-        <h2 className="mt-12 text-3xl font-bold tracking-tight text-gray-900">
-          Frequently Asked Questions
-        </h2>
-        <p><strong>Is there a limit to how many credits I can earn?</strong></p>
-        <p>Nope! The more friends you refer, the more credits you can earn. There is no limit.</p>
-        <p><strong>When do I receive my credits?</strong></p>
-        <p>Credits are added to your account instantly as soon as your referred friend successfully creates and verifies their account.</p>
-        <p><strong>Can I track my referrals?</strong></p>
-        <p>Currently, we don't have a dashboard to track individual referrals, but you will see your credit balance increase in your account section (coming soon!).</p>
+            ) : (
+              <div className="flex flex-col items-center gap-4">
+                <p className="text-muted-foreground">Sign up or log in to get your unique referral link.</p>
+                <Button onClick={() => setIsAuthModalOpen(true)}>Get Your Link</Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </div>
+
+      <div className="relative z-10 mx-auto max-w-4xl px-4 pt-0 pb-12 sm:px-6 lg:px-8">
+        <div className="prose prose-lg mx-auto">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+            How It Works
+            </h2>
+            <ol className="list-decimal list-inside space-y-4">
+            <li><strong>Share Your Link:</strong> Copy your unique referral link above and share it with friends, colleagues, or on social media.</li>
+            <li><strong>Friend Signs Up:</strong> When someone clicks your link and signs up for a free account, they become your referral.</li>
+            <li><strong>You Earn Credits:</strong> For every successful sign-up, we'll automatically add 10 page credits to your account balance. It's that simple!</li>
+            </ol>
+
+            <h2 className="mt-12 text-3xl font-bold tracking-tight text-gray-900">
+            Frequently Asked Questions
+            </h2>
+            <p><strong>Is there a limit to how many credits I can earn?</strong></p>
+            <p>Nope! The more friends you refer, the more credits you can earn. There is no limit.</p>
+            <p><strong>When do I receive my credits?</strong></p>
+            <p>Credits are added to your account instantly as soon as your referred friend successfully creates and verifies their account.</p>
+            <p><strong>Can I track my referrals?</strong></p>
+            <p>Currently, we don't have a dashboard to track individual referrals, but you will see your credit balance increase in your account section (coming soon!).</p>
+        </div>
+      </div>
     </>
   );
 }
