@@ -8,7 +8,7 @@ import { supabase, supabaseAdmin } from "./supabase";
 import { cookies } from "next/headers";
 import { createClient, type User } from "@supabase/supabase-js";
 
-async function getUser(): Promise<User | null> {
+async function getServerUser(): Promise<User | null> {
     const cookieStore = cookies();
     // This client is safe to use on the server because it uses the user's cookie.
     const client = createClient(
@@ -39,7 +39,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
     throw new Error("Invalid input: A valid PDF data URI is required.");
   }
 
-  const user = await getUser();
+  const user = await getServerUser();
 
   if (!user) {
     // For now, allow anonymous users one-shot access.
@@ -247,17 +247,19 @@ export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
   return { user: authData.user, error: null };
 }
 
-export async function getUserCreditInfo(): Promise<string> {
-    const user = await getUser();
+export async function getUserCreditInfo(userFromClient: User | null): Promise<string> {
+    const user = userFromClient ?? await getServerUser();
+
     if (!user) {
         return "1 page remaining";
     }
 
-    if (!supabase) {
-      return "Error: client not available";
+    // We must use the admin client here to bypass RLS for this server-side action.
+    if (!supabaseAdmin) {
+      return "Error: Admin client not available";
     }
 
-    const { data: userProfile, error } = await supabase
+    const { data: userProfile, error } = await supabaseAdmin
         .from('sc_users')
         .select('credits, plan')
         .eq('id', user.id)
