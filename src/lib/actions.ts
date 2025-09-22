@@ -43,8 +43,10 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   }
 
   const user = await getServerUser();
+  const isEffectivelyAnonymous = validatedInput.data.isAnonymous || !user;
 
-  if (validatedInput.data.isAnonymous) {
+
+  if (isEffectivelyAnonymous) {
       if (!supabaseAdmin) {
         throw new Error("Application is not configured for usage tracking.");
       }
@@ -70,7 +72,6 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       if (recentUsage && recentUsage.length > 0) {
         throw new Error("You have reached the free conversion limit for today. Please create an account to convert more documents.");
       }
-
   } else if (user) {
     if (!supabaseAdmin) {
       throw new Error("Application is not configured for user management.");
@@ -88,10 +89,6 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
     if (userProfile.plan === 'Free' && userProfile.credits <= 0) {
       throw new Error("You have no more credits. Please upgrade your plan to convert more documents.");
     }
-  } else {
-    // This case happens if isAnonymous is false but we can't find a user.
-    // It's a security measure.
-    throw new Error("You must be logged in to perform this action.");
   }
 
 
@@ -125,7 +122,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
     }
 
     // If conversion was successful, handle credit/usage update
-    if (validatedInput.data.isAnonymous) {
+    if (isEffectivelyAnonymous) {
       if(supabaseAdmin) {
         const headersList = headers();
         const ipAddress = headersList.get("x-forwarded-for") ?? '127.0.0.1';
