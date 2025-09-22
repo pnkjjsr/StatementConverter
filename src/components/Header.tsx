@@ -35,33 +35,34 @@ export function Header() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [creditInfo, setCreditInfo] = useState<string>("1 page remaining");
 
+  const updateCreditInfo = async () => {
+    const info = await getUserCreditInfo();
+    setCreditInfo(info);
+  };
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
 
     window.addEventListener("scroll", handleScroll);
+    window.addEventListener('focus', updateCreditInfo);
 
-    const updateCreditInfo = () => {
-        getUserCreditInfo().then(setCreditInfo);
-    };
+    // Run on initial mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      updateCreditInfo();
+    });
 
-    const { data: { subscription } } = supabase?.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
         setUser(session?.user ?? null);
         updateCreditInfo();
         if (session?.user) {
           setIsAuthModalOpen(false);
         }
-    }) ?? { data: { subscription: null } };
-
-    // Initial check
-    supabase?.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      updateCreditInfo();
-    });
-
-    // Also update when window is focused, in case user bought credits in another tab
-    window.addEventListener('focus', updateCreditInfo);
+      }
+    );
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
