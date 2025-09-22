@@ -6,6 +6,7 @@ import { Contact } from "@/components/Contact";
 import { AnimatedSection } from "@/components/AnimatedSection";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Tiers } from "@/components/Tiers";
+import { Faq } from "@/components/Faq";
 
 export default function Home() {
   return (
@@ -24,6 +25,7 @@ export default function Home() {
         </AnimatedSection>
         <Features />
         <Tiers />
+        <Faq />
         <Contact />
       </div>
     </>
