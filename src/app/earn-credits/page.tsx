@@ -231,7 +231,11 @@ export default function EarnCreditsPage() {
                 <h2 className="text-3xl font-bold tracking-tight text-gray-900 text-center mb-8">
                     Frequently Asked Questions
                 </h2>
-                 <Accordion type="single" collapsible className="w-full space-y-4">
+                 <Accordion 
+                    type="multiple" 
+                    className="w-full space-y-4"
+                    defaultValue={faqItems.map((_, index) => `item-${index}`)}
+                >
                     {faqItems.map((item, index) => (
                     <AccordionItem
                         key={index}
