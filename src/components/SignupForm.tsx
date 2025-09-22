@@ -189,18 +189,18 @@ export function SignupForm({ onSwitchView, onOpenChange }: SignupFormProps) {
             </span>
             </div>
         </div>
-        <div className="flex justify-center gap-3">
+        <div className="space-y-3">
             {socialProviders.map((provider) => (
             <Button
                 key={provider.name}
                 variant="outline"
-                size="icon"
-                className={cn("h-12 w-12 group", provider.hoverClass)}
+                className={cn("w-full", provider.hoverClass)}
                 onClick={() => handleOAuthLogin(provider.name.toLowerCase() as Provider)}
                 disabled={!!supabaseError}
                 aria-label={`Continue with ${provider.name}`}
             >
                 {provider.icon}
+                <span className="ml-2">Continue with {provider.name}</span>
             </Button>
             ))}
         </div>
