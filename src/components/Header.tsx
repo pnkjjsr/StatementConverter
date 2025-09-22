@@ -23,6 +23,7 @@ import { supabase } from "@/lib/supabase";
 import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
 import { AuthModal } from "./AuthModal";
 import { PricingModal } from "./PricingModal";
+import { Badge } from "./ui/badge";
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -31,6 +32,7 @@ export function Header() {
   const [authModalView, setAuthModalView] = useState<"login" | "signup">("login");
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [creditInfo, setCreditInfo] = useState<string>("1 page remaining");
 
   useEffect(() => {
     const handleScroll = () => {
@@ -38,18 +40,49 @@ export function Header() {
     };
 
     window.addEventListener("scroll", handleScroll);
+
+    const updateUserState = (session: Session | null) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      
+      if (currentUser) {
+        const plan = currentUser.user_metadata?.plan;
+        const credits = currentUser.user_metadata?.credits;
+
+        switch (plan) {
+          case 'Starter':
+            setCreditInfo('400 pages/month');
+            break;
+          case 'Professional':
+            setCreditInfo('1000 pages/month');
+            break;
+          case 'Business':
+            setCreditInfo('4000 pages/month');
+            break;
+          case 'Enterprise':
+            setCreditInfo('Custom plan');
+            break;
+          default:
+            // Registered user with no plan
+            setCreditInfo(credits ? `${credits} pages remaining` : '5 pages remaining');
+            break;
+        }
+        if (session?.user) {
+          setIsAuthModalOpen(false);
+        }
+      } else {
+        // Anonymous user
+        setCreditInfo("1 page remaining");
+      }
+    };
     
     const { data: { subscription } } = supabase?.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      // Close modal on successful login/signup
-      if (session?.user) {
-        setIsAuthModalOpen(false);
-      }
+      updateUserState(session);
     }) ?? { data: { subscription: null } };
 
     // Check initial session
     supabase?.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+      updateUserState(session);
     });
 
     return () => {
@@ -79,6 +112,7 @@ export function Header() {
 
   const authLinks = (
     <>
+      <Badge variant="outline" className="border-primary text-primary">{creditInfo}</Badge>
       <button onClick={handlePricingModalOpen} className="text-gray-600 hover:text-primary transition-colors">Pricing</button>
       <button onClick={() => handleAuthModalOpen("login")} className="text-gray-600 hover:text-primary transition-colors">Login</button>
       <button onClick={() => handleAuthModalOpen("signup")} className={cn("px-4 py-2 text-sm text-primary border border-primary rounded-full hover:bg-primary hover:text-white transition-colors")}>Sign Up</button>
@@ -87,6 +121,7 @@ export function Header() {
 
   const userMenu = (
     <div className="flex items-center gap-4">
+      <Badge variant="outline" className="border-primary text-primary">{creditInfo}</Badge>
       <button onClick={handlePricingModalOpen} className="hidden sm:block text-gray-600 hover:text-primary transition-colors">Pricing</button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
