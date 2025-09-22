@@ -30,7 +30,7 @@ export default function RootLayout({
         <div className="relative flex min-h-screen w-full flex-col">
           <FogAnimation />
           <Header />
-          <main className="flex-1 pt-20">{children}</main>
+          <main className="flex flex-1 flex-col pt-20">{children}</main>
           <footer className="w-full max-w-6xl mx-auto px-6 py-8 text-center text-sm text-muted-foreground relative z-10">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <p className="mb-4 md:mb-0">&copy; {new Date().getFullYear()} Bank Statement Converter Ltd. All rights reserved.</p>

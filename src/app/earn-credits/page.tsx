@@ -1,3 +1,4 @@
+
 // src/app/earn-credits/page.tsx
 'use client';
 
