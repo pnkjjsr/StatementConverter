@@ -29,7 +29,7 @@ const tiers = {
       price: '$15',
       priceSuffix: '/ month',
       description: 'For individuals and small projects',
-      features: ['400 pages / month', 'Standard processing speed', 'Email support'],
+      features: ['400 pages / month', 'Email support'],
       cta: 'Choose Plan',
     },
     {
@@ -64,7 +64,7 @@ const tiers = {
       price: '$90',
       priceSuffix: '/ year',
       description: 'For individuals and small projects',
-      features: ['4,800 pages / year', 'Standard processing speed', 'Email support'],
+      features: ['4,800 pages / year', 'Email support'],
       cta: 'Choose Plan',
     },
     {
