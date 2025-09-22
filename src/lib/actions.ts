@@ -70,6 +70,14 @@ const sendContactMessageSchema = z.object({
     message: z.string().min(1, 'Message is required.'),
 });
 
+const sendInviteSchema = z.object({
+    invites: z.array(z.object({
+        name: z.string().min(1, "Name is required"),
+        email: z.string().email("Invalid email"),
+    })),
+    referralLink: z.string().url("Invalid referral link"),
+});
+
 export async function sendContactMessage(input: z.infer<typeof sendContactMessageSchema>) {
     const validatedInput = sendContactMessageSchema.safeParse(input);
 
@@ -97,6 +105,29 @@ export async function sendContactMessage(input: z.infer<typeof sendContactMessag
     }
 
     return { success: true };
+}
+
+export async function sendInvites(input: z.infer<typeof sendInviteSchema>) {
+    const validatedInput = sendInviteSchema.safeParse(input);
+
+    if (!validatedInput.success) {
+        throw new Error('Invalid input: ' + JSON.stringify(validatedInput.error.flatten().fieldErrors));
+    }
+
+    // In a real app, you would integrate with an email service like Resend or SendGrid here.
+    // For now, we will just log the invites to the console.
+    console.log("Sending invites:", {
+        invites: validatedInput.data.invites,
+        referralLink: validatedInput.data.referralLink,
+    });
+    
+    // Simulate sending emails
+    for (const invite of validatedInput.data.invites) {
+        console.log(`Simulating sending email to ${invite.name} at ${invite.email}`);
+        console.log(`Message: Hey ${invite.name}, check out this cool service! ${validatedInput.data.referralLink}`);
+    }
+
+    return { success: true, message: "Invitations have been sent successfully." };
 }
 
 

@@ -8,8 +8,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Copy } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AuthModal } from '@/components/AuthModal';
+import {
+  EmailShareButton,
+  FacebookShareButton,
+  LinkedinShareButton,
+  RedditShareButton,
+  TelegramShareButton,
+  TwitterShareButton,
+  WhatsappShareButton,
+  EmailIcon,
+  FacebookIcon,
+  LinkedinIcon,
+  RedditIcon,
+  TelegramIcon,
+  XIcon,
+  WhatsappIcon,
+} from 'react-share';
+import { InviteFriendForm } from '@/components/InviteFriendForm';
 
 export default function EarnCreditsPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -26,13 +43,10 @@ export default function EarnCreditsPage() {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
       if (session?.user) {
-        // We get the referral code from the user's metadata.
         const code = session.user.user_metadata?.referral_code;
         if(code) {
             setReferralCode(code);
         } else {
-            // A placeholder until the server can provide one.
-            // In a real app, this should be generated and saved on first load.
             const pseudoCode = session.user.id.substring(0, 8);
             setReferralCode(pseudoCode);
         }
@@ -61,14 +75,27 @@ export default function EarnCreditsPage() {
   }, []);
 
   const referralLink = referralCode ? `${origin}/?ref=${referralCode}` : '';
+  const shareTitle = "Check out this awesome PDF to Excel converter!";
+  const shareBody = "I've been using this tool to convert my bank statements to Excel and it's a huge time saver. You should try it out!";
 
   const copyToClipboard = () => {
+    if(!referralLink) return;
     navigator.clipboard.writeText(referralLink);
     toast({
       title: 'Copied to Clipboard!',
       description: 'Your referral link has been copied.',
     });
   };
+
+  const socialShareButtons = [
+    { Button: LinkedinShareButton, Icon: LinkedinIcon, props: { url: referralLink, title: shareTitle } },
+    { Button: FacebookShareButton, Icon: FacebookIcon, props: { url: referralLink, quote: shareBody } },
+    { Button: TwitterShareButton, Icon: XIcon, props: { url: referralLink, title: shareBody } },
+    { Button: WhatsappShareButton, Icon: WhatsappIcon, props: { url: referralLink, title: shareBody, separator: " " } },
+    { Button: RedditShareButton, Icon: RedditIcon, props: { url: referralLink, title: shareTitle } },
+    { Button: TelegramShareButton, Icon: TelegramIcon, props: { url: referralLink, title: shareBody } },
+    { Button: EmailShareButton, Icon: EmailIcon, props: { url: referralLink, subject: shareTitle, body: shareBody } },
+  ] as const;
 
   return (
     <>
@@ -91,7 +118,7 @@ export default function EarnCreditsPage() {
           {loading ? (
             <p>Loading your referral link...</p>
           ) : user && referralLink ? (
-            <div className="flex flex-col items-center gap-4">
+            <div className="flex flex-col items-center gap-6">
               <p className="text-muted-foreground">Share this link. When someone signs up, you get 10 extra page credits.</p>
               <div className="flex w-full max-w-md items-center space-x-2">
                 <Input type="text" value={referralLink} readOnly className="text-center"/>
@@ -99,6 +126,21 @@ export default function EarnCreditsPage() {
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
+
+                <div className="w-full max-w-md">
+                    <CardDescription className="text-center mb-4 font-semibold">Or share directly</CardDescription>
+                    <div className="flex justify-center gap-3">
+                    {socialShareButtons.map(({ Button: ShareButton, Icon, props }, index) => (
+                        <ShareButton key={index} {...props}>
+                        <Icon size={40} round />
+                        </ShareButton>
+                    ))}
+                    </div>
+                </div>
+
+                <div className="w-full max-w-2xl">
+                    <InviteFriendForm referralLink={referralLink} />
+                </div>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-4">
