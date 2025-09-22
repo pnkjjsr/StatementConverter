@@ -22,12 +22,14 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
 import { AuthModal } from "./AuthModal";
+import { PricingModal } from "./PricingModal";
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalView, setAuthModalView] = useState<"login" | "signup">("login");
+  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
 
   useEffect(() => {
@@ -62,6 +64,11 @@ export function Header() {
     setIsMobileMenuOpen(false);
   }
 
+  const handlePricingModalOpen = () => {
+    setIsPricingModalOpen(true);
+    setIsMobileMenuOpen(false);
+  }
+
   const handleLogout = async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
@@ -72,7 +79,7 @@ export function Header() {
 
   const authLinks = (
     <>
-      <a href="#" className="text-gray-600 hover:text-primary transition-colors">Pricing</a>
+      <button onClick={handlePricingModalOpen} className="text-gray-600 hover:text-primary transition-colors">Pricing</button>
       <button onClick={() => handleAuthModalOpen("login")} className="text-gray-600 hover:text-primary transition-colors">Login</button>
       <button onClick={() => handleAuthModalOpen("signup")} className={cn("px-4 py-2 text-sm text-primary border border-primary rounded-full hover:bg-primary hover:text-white transition-colors")}>Sign Up</button>
     </>
@@ -80,7 +87,7 @@ export function Header() {
 
   const userMenu = (
     <div className="flex items-center gap-4">
-      <a href="#" className="hidden sm:block text-gray-600 hover:text-primary transition-colors">Pricing</a>
+      <button onClick={handlePricingModalOpen} className="hidden sm:block text-gray-600 hover:text-primary transition-colors">Pricing</button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="focus:outline-none rounded-full">
@@ -118,6 +125,7 @@ export function Header() {
         onOpenChange={setIsAuthModalOpen}
         initialView={authModalView}
       />
+      <PricingModal open={isPricingModalOpen} onOpenChange={setIsPricingModalOpen} />
       <header className={cn(
         "fixed top-0 z-50 w-full transition-all duration-300",
         isScrolled ? "bg-background/90 backdrop-blur-sm shadow-sm" : "bg-transparent"
@@ -138,7 +146,7 @@ export function Header() {
               </SheetTrigger>
               <SheetContent side="left" className="bg-white/80 backdrop-blur-sm rounded-lg p-4">
                 <div className="flex flex-col space-y-3 px-2 pt-4 pb-2">
-                  <a href="#" className="text-gray-600 hover:text-primary transition-colors py-2">Pricing</a>
+                  <button onClick={handlePricingModalOpen} className="text-gray-600 hover:text-primary transition-colors py-2">Pricing</button>
                   {user ? (
                     <>
                       <button onClick={handleLogout} className="text-gray-600 text-left hover:text-primary transition-colors py-2">Logout</button>

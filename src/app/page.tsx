@@ -2,7 +2,6 @@
 
 import { Features } from "@/components/Features";
 import { StatementConverter } from "@/components/StatementConverter";
-import { Pricing } from "@/components/Pricing";
 import { Contact } from "@/components/Contact";
 import { AnimatedSection } from "@/components/AnimatedSection";
 import { HowItWorks } from "@/components/HowItWorks";
@@ -23,7 +22,6 @@ export default function Home() {
           <StatementConverter />
         </AnimatedSection>
         <Features />
-        <Pricing />
         <Contact />
       </div>
     </>
