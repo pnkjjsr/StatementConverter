@@ -4,10 +4,12 @@
 import { useState, useEffect, useRef } from "react";
 import FOG from "vanta/dist/vanta.fog.min";
 import * as THREE from "three";
+import { usePathname } from "next/navigation";
 
 export const FogAnimation = () => {
   const [vantaEffect, setVantaEffect] = useState<any>(null);
   const vantaRef = useRef(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!vantaEffect && window.innerWidth > 1024) {
@@ -34,6 +36,17 @@ export const FogAnimation = () => {
       if (vantaEffect) vantaEffect.destroy();
     };
   }, [vantaEffect]);
+
+  useEffect(() => {
+    if (vantaEffect) {
+      // Short delay to allow page content to render before resizing
+      const timer = setTimeout(() => {
+        vantaEffect.resize();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [pathname, vantaEffect]);
+
 
   return (
     <div ref={vantaRef} className="absolute inset-0 -z-10" >
