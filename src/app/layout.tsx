@@ -37,9 +37,9 @@ export default function RootLayout({
               <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
                 <a href="#" className="hover:text-primary transition-colors">Earn Credits</a>
                 <a href="/about" className="hover:text-primary transition-colors">About</a>
-                <a href="/terms" className="hover:text-primary transition-colors">Terms</a>
+                <a href="/terms" className="hovertext-primary transition-colors">Terms</a>
                 <a href="/privacy" className="hover:text-primary transition-colors">Privacy</a>
-                <a href="#" className="hover:text-primary transition-colors">Blog</a>
+                <a href="/blog" className="hover:text-primary transition-colors">Blog</a>
               </div>
             </div>
           </footer>
