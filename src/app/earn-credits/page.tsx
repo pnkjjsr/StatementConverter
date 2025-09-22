@@ -1,4 +1,3 @@
-
 // src/app/earn-credits/page.tsx
 'use client';
 
@@ -28,6 +27,7 @@ import {
   WhatsappIcon,
 } from 'react-share';
 import { InviteFriendForm } from '@/components/InviteFriendForm';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function EarnCreditsPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -98,10 +98,48 @@ export default function EarnCreditsPage() {
     { Button: EmailShareButton, Icon: EmailIcon, props: { url: referralLink, subject: shareTitle, body: shareBody } },
   ] as const;
 
+  const ReferralCardSkeleton = () => (
+    <div className="flex flex-col items-center gap-6">
+       <Skeleton className="h-5 w-3/4" />
+      <div className="flex w-full max-w-md items-center space-x-2">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-10" />
+      </div>
+      <div className="w-full max-w-md">
+        <Skeleton className="h-5 w-1/3 mx-auto mb-4" />
+        <div className="flex justify-center gap-3">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <Skeleton className="h-10 w-10 rounded-full" />
+        </div>
+      </div>
+      <div className="w-full max-w-2xl">
+         <div className="mt-8 pt-8 border-t">
+            <Skeleton className="h-5 w-1/3 mx-auto mb-4" />
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                <Skeleton className="h-10 w-full" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-10 flex-grow" />
+                  <Skeleton className="h-10 w-10" />
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <Skeleton className="h-9 w-28" />
+                <Skeleton className="h-10 w-32" />
+              </div>
+            </div>
+         </div>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <AuthModal open={isAuthModalOpen} onOpenChange={setIsAuthModalOpen} initialView="signup" />
-      <div className="relative z-10 mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8 flex-1 flex flex-col">
         <div className="text-center">
           <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
             Earn Free Credits
@@ -117,7 +155,7 @@ export default function EarnCreditsPage() {
           </CardHeader>
           <CardContent className="text-center">
             {loading ? (
-              <p>Loading your referral link...</p>
+                <ReferralCardSkeleton />
             ) : user && referralLink ? (
               <div className="flex flex-col items-center gap-6">
                 <p className="text-muted-foreground">Share this link. When someone signs up, you get 10 extra page credits.</p>
