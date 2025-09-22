@@ -35,6 +35,7 @@ const convertPdfSchema = z.object({
 
 export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   const validatedInput = convertPdfSchema.safeParse(input);
+  const cookieStore = cookies();
 
   if (!validatedInput.success) {
     throw new Error("Invalid input: A valid PDF data URI is required.");
@@ -43,9 +44,10 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   const user = await getServerUser();
 
   if (validatedInput.data.isAnonymous) {
-      // Logic for anonymous users is handled client-side with localStorage.
-      // This server-side block is a fallback/additional check if needed,
-      // but for now we trust the client-side gate for anonymous users.
+      const hasConvertedCookie = cookieStore.get('hasConvertedAnonymously');
+      if (hasConvertedCookie?.value === 'true') {
+        throw new Error("You have already used your free conversion. Please create an account to convert more documents.");
+      }
   } else if (user) {
     if (!supabaseAdmin) {
       throw new Error("Application is not configured for user management.");
@@ -99,8 +101,10 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
         totalTokens += transformationResult.tokenUsage.totalTokens;
     }
 
-    // If conversion was successful, and the user is logged in, decrement their credits.
-    if (user && supabaseAdmin) {
+    // If conversion was successful, handle credit/usage update
+    if (validatedInput.data.isAnonymous) {
+        cookieStore.set('hasConvertedAnonymously', 'true', { maxAge: 60 * 60 * 24 }); // Expires in 24 hours
+    } else if (user && supabaseAdmin) {
       const { data: userProfile, error: profileError } = await supabaseAdmin
         .from('sc_users')
         .select('plan')
@@ -253,12 +257,10 @@ export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
   return { user: authData.user, error: null };
 }
 
-export async function getUserCreditInfo(userFromClient: User | null): Promise<string> {
+export async function getUserCreditInfo(userFromClient?: User | null): Promise<string> {
     const user = userFromClient ?? await getServerUser();
 
     if (!user) {
-        // Client-side logic will use localStorage to check if the 1 free page has been used.
-        // If not used, it will show "1 page remaining".
         // This server action returns a default for when no user is found.
         const hasConverted = cookies().get('hasConvertedAnonymously')?.value === 'true';
         return hasConverted ? "0 pages remaining" : "1 page remaining";

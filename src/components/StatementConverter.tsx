@@ -41,8 +41,16 @@ export function StatementConverter({ user }: StatementConverterProps) {
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isPending, startTransition] = useTransition();
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
+  const [hasConvertedAnonymously, setHasConvertedAnonymously] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!user) {
+      const storedFlag = localStorage.getItem('hasConvertedAnonymously') === 'true';
+      setHasConvertedAnonymously(storedFlag);
+    }
+  }, [user]);
 
   const handleFileChange = (selectedFile: File | null) => {
     if (selectedFile) {
@@ -87,9 +95,7 @@ export function StatementConverter({ user }: StatementConverterProps) {
     if (!file) return;
 
     // Anonymous user check
-    if (!user) {
-      const hasConverted = localStorage.getItem('hasConvertedAnonymously') === 'true';
-      if (hasConverted) {
+    if (!user && hasConvertedAnonymously) {
         toast({
           variant: 'destructive',
           title: 'Free Limit Reached',
@@ -97,7 +103,6 @@ export function StatementConverter({ user }: StatementConverterProps) {
         });
         setIsPricingModalOpen(true);
         return;
-      }
     }
 
     startTransition(async () => {
@@ -120,6 +125,7 @@ export function StatementConverter({ user }: StatementConverterProps) {
 
             if (!user) {
               localStorage.setItem('hasConvertedAnonymously', 'true');
+              setHasConvertedAnonymously(true);
             }
 
             toast({
