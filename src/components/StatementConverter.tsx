@@ -126,9 +126,10 @@ export function StatementConverter({ user }: StatementConverterProps) {
             if (!user) {
               localStorage.setItem('hasConvertedAnonymously', 'true');
               setHasConvertedAnonymously(true);
-              // Dispatch a custom event to tell the header to refresh credits
-              window.dispatchEvent(new Event('focus'));
             }
+            // Dispatch a custom event to tell the header to refresh credits
+            window.dispatchEvent(new Event('focus'));
+            
 
             toast({
               variant: "default",
@@ -175,7 +176,6 @@ export function StatementConverter({ user }: StatementConverterProps) {
     const blob = new Blob([convertedData], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", url);
     const fileName = file?.name.replace(/\.pdf$/i, ".csv") || "converted_statement.csv";
     link.setAttribute("download", fileName);
     document.body.appendChild(link);
@@ -317,3 +317,5 @@ export function StatementConverter({ user }: StatementConverterProps) {
     </>
   );
 }
+
+    
