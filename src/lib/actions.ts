@@ -34,10 +34,10 @@ const convertPdfSchema = z.object({
   isAnonymous: z.boolean(),
 });
 
-async function attemptConversion(pdfDataUri: string, model: Model<any, any>) {
+async function attemptConversion(pdfDataUri: string, modelToUse: Model<any, any>) {
     let totalTokens = 0;
 
-    const extractionResult = await extractDataFromPdf({ pdfDataUri }, { model });
+    const extractionResult = await extractDataFromPdf({ pdfDataUri }, { model: modelToUse });
     if (!extractionResult || !extractionResult.extractedData) {
       throw new Error("AI failed to extract any data from the PDF. The document might be empty, unreadable, or image-based.");
     }
@@ -45,7 +45,7 @@ async function attemptConversion(pdfDataUri: string, model: Model<any, any>) {
         totalTokens += extractionResult.tokenUsage.totalTokens;
     }
 
-    const transformationResult = await transformExtractedData({ extractedData: extractionResult.extractedData }, { model });
+    const transformationResult = await transformExtractedData({ extractedData: extractionResult.extractedData }, { model: modelToUse });
     if (!transformationResult || !transformationResult.standardizedData) {
       throw new Error("AI failed to format the extracted data. The data might be in an unusual format.");
     }
@@ -68,7 +68,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   }
 
   const user = await getServerUser();
-  let isEffectivelyAnonymous = validatedInput.data.isAnonymous || !user;
+  const isEffectivelyAnonymous = validatedInput.data.isAnonymous || !user;
 
   if (isEffectivelyAnonymous) {
       if (!supabaseAdmin) {
@@ -109,15 +109,24 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       return { error: "You have no more credits. Please upgrade your plan to convert more documents." };
     }
   } else {
-    // This handles the case where isAnonymous is false but we can't find a user.
-    // We treat them as anonymous instead of throwing an error for a smoother UX.
-    isEffectivelyAnonymous = true;
+    // This case happens if isAnonymous is false but we can't find a user. Treat as anonymous.
+    const headersList = headers();
+    const ipAddress = headersList.get("x-forwarded-for") ?? '127.0.0.1';
+    const ipHash = createHash('sha256').update(ipAddress).digest('hex');
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    const { count } = await supabaseAdmin
+      .from('sc_anonymous_usage')
+      .select('id', { count: 'exact', head: true })
+      .eq('ip_hash', ipHash)
+      .gt('created_at', twentyFourHoursAgo);
+
+    if (count !== null && count > 0) {
+      return { error: "You have reached the free conversion limit for today. Please create an account to convert more documents."};
+    }
   }
 
-  try {
-    const result = await attemptConversion(validatedInput.data.pdfDataUri, primaryModel);
-    
-    // If conversion was successful, handle credit/usage update
+  const handleSuccessfulConversion = async () => {
     if (isEffectivelyAnonymous) {
       if(supabaseAdmin) {
         const headersList = headers();
@@ -133,46 +142,27 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
         }
       }
     } else if (user && supabaseAdmin) {
-      const { data: userProfile, error: profileError } = await supabaseAdmin
-        .from('sc_users')
-        .select('plan')
-        .eq('id', user.id)
-        .single();
-      
+      const { data: userProfile } = await supabaseAdmin.from('sc_users').select('plan').eq('id', user.id).single();
       if (userProfile && userProfile.plan === 'Free') {
         const { error: decrementError } = await supabaseAdmin.rpc('decrement_credits', { p_user_id: user.id });
-        if (decrementError) {
-          console.error("Failed to decrement credits:", decrementError);
-        }
+        if (decrementError) console.error("Failed to decrement credits:", decrementError);
       }
     }
+  };
+
+  try {
+    const result = await attemptConversion(validatedInput.data.pdfDataUri, primaryModel);
+    await handleSuccessfulConversion();
     return result;
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
     
-    // Check if the error is a quota error
     if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
       console.warn("Primary model quota exceeded. Attempting fallback.");
       try {
-        // Retry with the fallback model
         const fallbackResult = await attemptConversion(validatedInput.data.pdfDataUri, fallbackModel);
-        // We don't need to re-handle the credit/usage update logic here as it's outside the try-catch for the main attempt
-         if (isEffectivelyAnonymous) {
-          if(supabaseAdmin) {
-            const headersList = headers();
-            const ipAddress = headersList.get("x-forwarded-for") ?? '127.0.0.1';
-            const ipHash = createHash('sha256').update(ipAddress).digest('hex');
-            const { error: insertError } = await supabaseAdmin.from('sc_anonymous_usage').insert({ ip_hash: ipHash });
-            if (insertError) console.error('Failed to log anonymous usage on fallback:', insertError);
-          }
-        } else if (user && supabaseAdmin) {
-           const { data: userProfile } = await supabaseAdmin.from('sc_users').select('plan').eq('id', user.id).single();
-           if (userProfile && userProfile.plan === 'Free') {
-             const { error: decrementError } = await supabaseAdmin.rpc('decrement_credits', { p_user_id: user.id });
-             if (decrementError) console.error("Failed to decrement credits on fallback:", decrementError);
-           }
-        }
+        await handleSuccessfulConversion();
         return fallbackResult;
       } catch (fallbackError) {
          console.error("Fallback conversion process failed:", fallbackError);
@@ -365,3 +355,5 @@ export async function getUserCreditInfo(userFromClient?: User | null): Promise<s
             return `${userProfile.credits ?? 0} pages remaining`;
     }
 }
+
+    
