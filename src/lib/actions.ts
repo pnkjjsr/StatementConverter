@@ -156,6 +156,9 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   } catch (error) {
     console.error("Conversion process failed:", error);
     if (error instanceof Error) {
+        if (error.message.includes("429") || error.message.toLowerCase().includes("quota")) {
+            return { error: "Our service is currently experiencing very high demand, and we've reached our daily processing limit. Please try again tomorrow. For higher limits, please consider our paid plans." };
+        }
         if (error.message.includes("503") || error.message.toLowerCase().includes("model is overloaded")) {
             return { error: "The AI model is currently overloaded. Please try again in a few moments." };
         }
