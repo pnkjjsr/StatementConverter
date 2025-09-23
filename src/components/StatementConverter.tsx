@@ -44,7 +44,7 @@ export function StatementConverter({ user }: StatementConverterProps) {
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { decrementAnonymousCreations } = useAnonymousUsage();
+  const { anonymousCreations, decrementAnonymousCreations } = useAnonymousUsage();
 
   const handleFileChange = (selectedFile: File | null) => {
     if (selectedFile) {
@@ -87,6 +87,16 @@ export function StatementConverter({ user }: StatementConverterProps) {
 
   const handleConvert = () => {
     if (!file) return;
+
+    if (!user && anonymousCreations <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Free Limit Reached",
+        description: "Please create an account to convert more documents.",
+      });
+      setIsPricingModalOpen(true);
+      return;
+    }
 
     startTransition(async () => {
       setStatus("processing");
