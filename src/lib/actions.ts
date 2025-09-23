@@ -86,7 +86,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
     }
   } else {
     // This case handles if isAnonymous is false but we can't find a user.
-    // Instead of throwing an error, we treat them as anonymous.
+    // We treat them as anonymous instead of throwing an error.
     isEffectivelyAnonymous;
   }
 
