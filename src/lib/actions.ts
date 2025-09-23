@@ -42,6 +42,8 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
 
   const user = await getServerUser();
   const isEffectivelyAnonymous = validatedInput.data.isAnonymous || !user;
+  
+  let conversionSuccessful = false;
 
   if (isEffectivelyAnonymous) {
       if (!supabaseAdmin) {
@@ -108,61 +110,67 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       }
     }
   };
-  
-  // --- Primary Attempt ---
+
   try {
-    const extractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: primaryModel });
-    if (!extractionResult.extractedData) throw new Error("Primary model failed to extract data.");
-
-    const transformationResult = await transformExtractedData({ extractedData: extractionResult.extractedData }, { model: primaryModel });
-    if (!transformationResult.standardizedData) throw new Error("Primary model failed to transform data.");
-    
-    await handleSuccessfulConversion();
-
-    return {
-        standardizedData: transformationResult.standardizedData,
-        totalTokens: (extractionResult.tokenUsage?.totalTokens || 0) + (transformationResult.tokenUsage?.totalTokens || 0),
-    };
-  } catch (primaryError) {
-    console.warn("Primary model conversion failed. Attempting fallback with gemini-1.5-pro-latest.", primaryError);
-
-    // --- Secondary Fallback Attempt ---
+    // --- Primary Attempt ---
     try {
-        const fallbackExtractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: fallbackModel });
-        if (!fallbackExtractionResult.extractedData) throw new Error("Fallback model failed to extract data.");
+        console.log("Attempting conversion with primary model (gemini-1.5-flash-latest)...");
+        const extractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: primaryModel });
+        if (!extractionResult.extractedData) throw new Error("Primary model failed to extract data.");
 
-        const fallbackTransformationResult = await transformExtractedData({ extractedData: fallbackExtractionResult.extractedData }, { model: fallbackModel });
-        if (!fallbackTransformationResult.standardizedData) throw new Error("Fallback model failed to transform data.");
-
-        await handleSuccessfulConversion();
-
+        const transformationResult = await transformExtractedData({ extractedData: extractionResult.extractedData }, { model: primaryModel });
+        if (!transformationResult.standardizedData) throw new Error("Primary model failed to transform data.");
+        
+        conversionSuccessful = true;
         return {
-            standardizedData: fallbackTransformationResult.standardizedData,
-            totalTokens: (fallbackExtractionResult.tokenUsage?.totalTokens || 0) + (fallbackTransformationResult.tokenUsage?.totalTokens || 0),
+            standardizedData: transformationResult.standardizedData,
+            totalTokens: (extractionResult.tokenUsage?.totalTokens || 0) + (transformationResult.tokenUsage?.totalTokens || 0),
         };
-    } catch (fallbackError) {
-       console.warn("Fallback model conversion also failed. Attempting tertiary with gemini-1.0-pro.", fallbackError);
+    } catch (primaryError) {
+        console.warn("Primary model failed. Attempting fallback with gemini-1.5-pro-latest...", primaryError);
 
-        // --- Tertiary Fallback Attempt ---
+        // --- Secondary Fallback Attempt ---
         try {
-            const tertiaryExtractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: tertiaryModel });
-            if (!tertiaryExtractionResult.extractedData) throw new Error("Tertiary model failed to extract data.");
+            console.log("Attempting conversion with fallback model (gemini-1.5-pro-latest)...");
+            const fallbackExtractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: fallbackModel });
+            if (!fallbackExtractionResult.extractedData) throw new Error("Fallback model failed to extract data.");
 
-            const tertiaryTransformationResult = await transformExtractedData({ extractedData: tertiaryExtractionResult.extractedData }, { model: tertiaryModel });
-            if (!tertiaryTransformationResult.standardizedData) throw new Error("Tertiary model failed to transform data.");
+            const fallbackTransformationResult = await transformExtractedData({ extractedData: fallbackExtractionResult.extractedData }, { model: fallbackModel });
+            if (!fallbackTransformationResult.standardizedData) throw new Error("Fallback model failed to transform data.");
 
-            await handleSuccessfulConversion();
-
+            conversionSuccessful = true;
             return {
-                standardizedData: tertiaryTransformationResult.standardizedData,
-                totalTokens: (tertiaryExtractionResult.tokenUsage?.totalTokens || 0) + (tertiaryTransformationResult.tokenUsage?.totalTokens || 0),
+                standardizedData: fallbackTransformationResult.standardizedData,
+                totalTokens: (fallbackExtractionResult.tokenUsage?.totalTokens || 0) + (fallbackTransformationResult.tokenUsage?.totalTokens || 0),
             };
-        } catch (tertiaryError) {
-            console.error("All conversion methods failed (primary, fallback, and tertiary).", tertiaryError);
-            const errorMessage = primaryError instanceof Error ? primaryError.message : "An unknown error occurred during conversion.";
-            return { error: `The service is currently overloaded, and all backup conversion methods also failed. Please try again later. Details: ${errorMessage}`};
+        } catch (fallbackError) {
+            console.warn("Fallback model also failed. Attempting tertiary with gemini-1.0-pro...", fallbackError);
+
+            // --- Tertiary Fallback Attempt ---
+            try {
+                console.log("Attempting conversion with tertiary model (gemini-1.0-pro)...");
+                const tertiaryExtractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: tertiaryModel });
+                if (!tertiaryExtractionResult.extractedData) throw new Error("Tertiary model failed to extract data.");
+
+                const tertiaryTransformationResult = await transformExtractedData({ extractedData: tertiaryExtractionResult.extractedData }, { model: tertiaryModel });
+                if (!tertiaryTransformationResult.standardizedData) throw new Error("Tertiary model failed to transform data.");
+
+                conversionSuccessful = true;
+                return {
+                    standardizedData: tertiaryTransformationResult.standardizedData,
+                    totalTokens: (tertiaryExtractionResult.tokenUsage?.totalTokens || 0) + (tertiaryTransformationResult.tokenUsage?.totalTokens || 0),
+                };
+            } catch (tertiaryError) {
+                console.error("All conversion methods failed (primary, fallback, and tertiary).", tertiaryError);
+                const errorMessage = tertiaryError instanceof Error ? tertiaryError.message : "An unknown error occurred during conversion.";
+                return { error: `The service is currently overloaded, and all backup conversion methods also failed. Please try again later. Details: ${errorMessage}`};
+            }
         }
     }
+  } finally {
+      if (conversionSuccessful) {
+        await handleSuccessfulConversion();
+      }
   }
 }
 
@@ -339,3 +347,5 @@ export async function getUserCreditInfo(userFromClient?: User | null): Promise<s
             return `${userProfile.credits ?? 0} pages remaining`;
     }
 }
+
+    
