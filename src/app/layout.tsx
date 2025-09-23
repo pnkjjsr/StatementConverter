@@ -6,17 +6,21 @@ import { cn } from "@/lib/utils";
 import { FogAnimation } from "@/components/FogAnimation";
 import { Header } from "@/components/Header";
 import { AnonymousUsageProvider } from "@/context/AnonymousUsageContext";
+import { AnonymousUsageInitializer } from "@/components/AnonymousUsageInitializer";
+import { getUserCreditInfo } from "@/lib/actions";
 
 export const metadata: Metadata = {
   title: "Bank Statement Converter",
   description: "Convert PDF bank and credit card statements to Excel with one click.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const initialAnonymousCreations = await getUserCreditInfo();
+  
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -29,6 +33,7 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased")}>
         <AnonymousUsageProvider>
+          <AnonymousUsageInitializer initialCount={parseInt(initialAnonymousCreations, 10) || 0} />
           <div className="relative flex min-h-screen w-full flex-col">
             <FogAnimation />
             <Header />

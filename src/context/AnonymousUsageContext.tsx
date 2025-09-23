@@ -12,7 +12,7 @@ interface AnonymousUsageContextType {
 const AnonymousUsageContext = createContext<AnonymousUsageContextType | undefined>(undefined);
 
 export const AnonymousUsageProvider = ({ children }: { children: ReactNode }) => {
-  const [anonymousCreations, setAnonymousCreations] = useState(0);
+  const [anonymousCreations, setAnonymousCreations] = useState(1); // Default to 1
 
   const decrementAnonymousCreations = () => {
     setAnonymousCreations((prev) => Math.max(0, prev - 1));

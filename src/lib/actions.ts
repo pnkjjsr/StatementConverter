@@ -24,22 +24,26 @@ async function getIpAddress(): Promise<string | null> {
 
 async function getServerUser(): Promise<User | null> {
   const cookieStore = cookies();
-  const client = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        persistSession: false,
-      },
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-      },
-    }
-  );
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  return user;
+  try {
+    const client = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          auth: {
+            persistSession: false,
+          },
+          cookies: {
+            getAll: () => cookieStore.getAll(),
+          },
+        }
+      );
+      const {
+        data: { user },
+      } = await client.auth.getUser();
+      return user;
+  } catch (error) {
+    return null;
+  }
 }
 
 const convertPdfSchema = z.object({
@@ -81,6 +85,7 @@ async function handleSuccessfulConversion(
     }
   }
 }
+
 
 export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   const validatedInput = convertPdfSchema.safeParse(input);
@@ -133,7 +138,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   } else {
     return { error: 'You must be logged in to perform this action.' };
   }
-
+  
   const modelsToTry: { name: string; model: Model }[] = [
     { name: 'primary (gemini-1.5-flash-latest)', model: primaryModel },
     { name: 'fallback (gemini-1.5-pro-latest)', model: fallbackModel },
@@ -314,7 +319,7 @@ export async function getUserCreditInfo(
     if (supabaseAdmin) {
       const ipAddress = await getIpAddress();
       if (!ipAddress) {
-        return '1 page remaining';
+        return '1';
       }
       const ipHash = createHash('sha256').update(ipAddress).digest('hex');
       const twentyFourHoursAgo = new Date(
@@ -329,13 +334,11 @@ export async function getUserCreditInfo(
 
       if (error) {
         console.error('Error checking anonymous usage for header:', error);
-        return '1 page remaining';
+        return '1';
       }
-      return count !== null && count > 0
-        ? '0 pages remaining'
-        : '1 page remaining';
+      return count !== null && count > 0 ? '0' : '1';
     }
-    return '1 page remaining';
+    return '1';
   }
 
   if (!supabaseAdmin) {
