@@ -25,6 +25,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
 import { PricingModal } from "./PricingModal";
+import { useAnonymousUsage } from "@/context/AnonymousUsageContext";
 
 type Status = "idle" | "file-selected" | "processing" | "success" | "error";
 
@@ -43,6 +44,7 @@ export function StatementConverter({ user }: StatementConverterProps) {
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { decrementAnonymousCreations } = useAnonymousUsage();
 
   const handleFileChange = (selectedFile: File | null) => {
     if (selectedFile) {
@@ -125,8 +127,11 @@ export function StatementConverter({ user }: StatementConverterProps) {
             setTotalTokens(result.totalTokens || 0);
             setStatus("success");
             
-            // This is the key to updating the header count.
-            window.dispatchEvent(new Event('focus'));
+            if (!user) {
+              decrementAnonymousCreations();
+            } else {
+              window.dispatchEvent(new Event('focus')); // still need this for logged in user for now
+            }
 
             toast({
               variant: "default",

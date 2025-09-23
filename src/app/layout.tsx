@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import { FogAnimation } from "@/components/FogAnimation";
 import { Header } from "@/components/Header";
+import { AnonymousUsageProvider } from "@/context/AnonymousUsageContext";
 
 export const metadata: Metadata = {
   title: "Bank Statement Converter",
@@ -27,23 +28,25 @@ export default function RootLayout({
         />
       </head>
       <body className={cn("font-body antialiased")}>
-        <div className="relative flex min-h-screen w-full flex-col">
-          <FogAnimation />
-          <Header />
-          <main className="flex flex-1 flex-col pt-20">{children}</main>
-          <footer className="w-full max-w-6xl mx-auto px-6 py-8 text-center text-sm text-muted-foreground relative z-10">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <p className="mb-4 md:mb-0">&copy; {new Date().getFullYear()} Bank Statement Converter Ltd. All rights reserved.</p>
-              <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
-                <a href="/earn-credits" className="hover:text-primary transition-colors">Earn Credits</a>
-                <a href="/about" className="hover:text-primary transition-colors">About</a>
-                <a href="/terms" className="hovertext-primary transition-colors">Terms</a>
-                <a href="/privacy" className="hover:text-primary transition-colors">Privacy</a>
-                <a href="/blog" className="hover:text-primary transition-colors">Blog</a>
+        <AnonymousUsageProvider>
+          <div className="relative flex min-h-screen w-full flex-col">
+            <FogAnimation />
+            <Header />
+            <main className="flex flex-1 flex-col pt-20">{children}</main>
+            <footer className="w-full max-w-6xl mx-auto px-6 py-8 text-center text-sm text-muted-foreground relative z-10">
+              <div className="flex flex-col md:flex-row justify-between items-center">
+                <p className="mb-4 md:mb-0">&copy; {new Date().getFullYear()} Bank Statement Converter Ltd. All rights reserved.</p>
+                <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
+                  <a href="/earn-credits" className="hover:text-primary transition-colors">Earn Credits</a>
+                  <a href="/about" className="hover:text-primary transition-colors">About</a>
+                  <a href="/terms" className="hovertext-primary transition-colors">Terms</a>
+                  <a href="/privacy" className="hover:text-primary transition-colors">Privacy</a>
+                  <a href="/blog" className="hover:text-primary transition-colors">Blog</a>
+                </div>
               </div>
-            </div>
-          </footer>
-        </div>
+            </footer>
+          </div>
+        </AnonymousUsageProvider>
         <Toaster />
       </body>
     </html>

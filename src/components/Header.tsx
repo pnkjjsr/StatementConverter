@@ -25,6 +25,7 @@ import { AuthModal } from "./AuthModal";
 import { PricingModal } from "./PricingModal";
 import { Badge } from "./ui/badge";
 import { getUserCreditInfo } from "@/lib/actions";
+import { useAnonymousUsage } from "@/context/AnonymousUsageContext";
 
 
 export function Header() {
@@ -35,11 +36,16 @@ export function Header() {
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [creditInfo, setCreditInfo] = useState<string>("1 page remaining");
+  const { anonymousCreations, setAnonymousCreations } = useAnonymousUsage();
 
   const updateCreditInfo = useCallback(async (currentUser: SupabaseUser | null) => {
     const info = await getUserCreditInfo(currentUser);
     setCreditInfo(info);
-  }, []);
+    if (!currentUser) {
+        const remaining = parseInt(info.split(" ")[0]);
+        setAnonymousCreations(isNaN(remaining) ? 0 : remaining);
+    }
+  }, [setAnonymousCreations]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -62,20 +68,18 @@ export function Header() {
         await updateCreditInfo(currentUser);
     };
     fetchInitialData();
-
-    const handleFocus = () => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            updateCreditInfo(session?.user ?? null);
-        });
-    };
-    window.addEventListener('focus', handleFocus);
     
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener('focus', handleFocus);
       authListener?.subscription.unsubscribe();
     };
   }, [updateCreditInfo]);
+
+  useEffect(() => {
+      if (!user) {
+          setCreditInfo(`${anonymousCreations} page${anonymousCreations === 1 ? '' : 's'} remaining`);
+      }
+  }, [anonymousCreations, user]);
 
   const handleAuthModalOpen = (view: "login" | "signup") => {
     setAuthModalView(view);
