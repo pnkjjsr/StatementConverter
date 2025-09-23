@@ -8,7 +8,7 @@ import { supabase, supabaseAdmin } from "./supabase";
 import { cookies, headers } from "next/headers";
 import { createClient, type User } from "@supabase/supabase-js";
 import { createHash } from 'crypto';
-import { primaryModel, fallbackModel } from "@/ai/genkit";
+import { primaryModel, fallbackModel, tertiaryModel } from "@/ai/genkit";
 
 async function getServerUser(): Promise<User | null> {
     const cookieStore = cookies();
@@ -126,7 +126,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   } catch (primaryError) {
     console.warn("Primary model conversion failed, attempting fallback.", primaryError);
 
-    // --- Fallback Attempt ---
+    // --- Secondary Fallback Attempt ---
     try {
         const fallbackExtractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: fallbackModel });
         if (!fallbackExtractionResult.extractedData) throw new Error("Fallback model failed to extract data.");
@@ -141,9 +141,27 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
             totalTokens: (fallbackExtractionResult.tokenUsage?.totalTokens || 0) + (fallbackTransformationResult.tokenUsage?.totalTokens || 0),
         };
     } catch (fallbackError) {
-       console.error("Fallback conversion process also failed:", fallbackError);
-       const errorMessage = primaryError instanceof Error ? primaryError.message : "An unknown error occurred during conversion.";
-       return { error: `The service is currently overloaded, and the backup conversion method also failed. Please try again later. Details: ${errorMessage}`};
+       console.warn("Fallback model conversion also failed, attempting tertiary.", fallbackError);
+
+        // --- Tertiary Fallback Attempt ---
+        try {
+            const tertiaryExtractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: tertiaryModel });
+            if (!tertiaryExtractionResult.extractedData) throw new Error("Tertiary model failed to extract data.");
+
+            const tertiaryTransformationResult = await transformExtractedData({ extractedData: tertiaryExtractionResult.extractedData }, { model: tertiaryModel });
+            if (!tertiaryTransformationResult.standardizedData) throw new Error("Tertiary model failed to transform data.");
+
+            await handleSuccessfulConversion();
+
+            return {
+                standardizedData: tertiaryTransformationResult.standardizedData,
+                totalTokens: (tertiaryExtractionResult.tokenUsage?.totalTokens || 0) + (tertiaryTransformationResult.tokenUsage?.totalTokens || 0),
+            };
+        } catch (tertiaryError) {
+            console.error("All conversion methods failed (primary, fallback, and tertiary).", tertiaryError);
+            const errorMessage = primaryError instanceof Error ? primaryError.message : "An unknown error occurred during conversion.";
+            return { error: `The service is currently overloaded, and all backup conversion methods also failed. Please try again later. Details: ${errorMessage}`};
+        }
     }
   }
 }
@@ -321,5 +339,3 @@ export async function getUserCreditInfo(userFromClient?: User | null): Promise<s
             return `${userProfile.credits ?? 0} pages remaining`;
     }
 }
-
-    
