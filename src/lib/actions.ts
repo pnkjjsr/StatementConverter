@@ -13,7 +13,6 @@ import type { Model } from 'genkit/model';
 
 async function getIpAddress(): Promise<string | null> {
   try {
-    // The headers() function is what opts this into dynamic rendering.
     const headersList = headers();
     return headersList.get('x-forwarded-for') ?? '127.0.0.1';
   } catch (error) {
@@ -318,6 +317,7 @@ export async function getUserCreditInfo(
   if (!user) {
     if (supabaseAdmin) {
       const ipAddress = await getIpAddress();
+      // If we can't get an IP for any reason, default to allowing a conversion.
       if (!ipAddress) {
         return '1';
       }
@@ -334,10 +334,13 @@ export async function getUserCreditInfo(
 
       if (error) {
         console.error('Error checking anonymous usage for header:', error);
+        // Fail open to allow a conversion if the check fails.
         return '1';
       }
+      // If count is greater than 0, the user has already converted a file in the last 24 hours.
       return count !== null && count > 0 ? '0' : '1';
     }
+    // Default to allowing 1 conversion if Supabase admin is not available.
     return '1';
   }
 
