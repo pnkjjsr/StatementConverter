@@ -87,7 +87,7 @@ export function StatementConverter({ user }: StatementConverterProps) {
 
   const handleConvert = () => {
     if (!file) return;
-
+    console.log(anonymousCreations);
     if (!user && anonymousCreations <= 0) {
       toast({
         variant: "destructive",

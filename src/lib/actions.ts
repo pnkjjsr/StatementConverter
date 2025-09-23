@@ -11,6 +11,17 @@ import { createHash } from 'crypto';
 import { primaryModel, fallbackModel, tertiaryModel } from '@/ai/genkit';
 import type { Model } from 'genkit/model';
 
+async function getIpAddress(): Promise<string | null> {
+  try {
+    // The headers() function is what opts this into dynamic rendering.
+    const headersList = headers();
+    return headersList.get('x-forwarded-for') ?? '127.0.0.1';
+  } catch (error) {
+    console.log('Could not get headers for IP tracking, likely a static build.');
+    return null;
+  }
+}
+
 async function getServerUser(): Promise<User | null> {
   const cookieStore = cookies();
   const client = createClient(
@@ -42,13 +53,13 @@ async function handleSuccessfulConversion(
 ) {
   if (isAnonymous) {
     if (supabaseAdmin) {
-      const headersList = headers();
-      const ipAddress = headersList.get('x-forwarded-for') ?? '127.0.0.1';
-      const ipHash = createHash('sha256').update(ipAddress).digest('hex');
+      const ipAddress = await getIpAddress();
+      if (!ipAddress) return;
 
+      const ipHash = createHash('sha256').update(ipAddress).digest('hex');
       const { error: insertError } = await supabaseAdmin
         .from('sc_anonymous_usage')
-        .insert({ ip_hash: ipHash });
+        .insert({ ip_hash: ipHash, last_conversion_at: new Date().toISOString() });
 
       if (insertError) {
         console.error('Failed to log anonymous usage:', insertError);
@@ -85,8 +96,10 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
     if (!supabaseAdmin) {
       return { error: 'Application is not configured for usage tracking.' };
     }
-    const headersList = headers();
-    const ipAddress = headersList.get('x-forwarded-for') ?? '127.0.0.1';
+    const ipAddress = await getIpAddress();
+    if (!ipAddress) {
+        return { error: 'Could not verify usage limits due to a server configuration issue.' };
+    }
     const ipHash = createHash('sha256').update(ipAddress).digest('hex');
     const twentyFourHoursAgo = new Date(
       Date.now() - 24 * 60 * 60 * 1000
@@ -95,7 +108,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       .from('sc_anonymous_usage')
       .select('id', { count: 'exact', head: true })
       .eq('ip_hash', ipHash)
-      .gt('created_at', twentyFourHoursAgo);
+      .gt('last_conversion_at', twentyFourHoursAgo);
     if (usageError) console.error('Error checking anonymous usage:', usageError);
     else if (count !== null && count > 0)
       return {
@@ -121,93 +134,45 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
     return { error: 'You must be logged in to perform this action.' };
   }
 
-  // --- Primary Attempt ---
-  try {
-    console.log('Attempt 1: Using primary model (gemini-1.5-flash-latest)...');
-    const extractionResult = await extractDataFromPdf(
-      { pdfDataUri: validatedInput.data.pdfDataUri },
-      { model: primaryModel }
-    );
-    const transformationResult = await transformExtractedData(
-      { extractedData: extractionResult.extractedData },
-      { model: primaryModel }
-    );
-    if (!transformationResult.standardizedData)
-      throw new Error('Primary model failed to transform data.');
+  const modelsToTry: { name: string; model: Model }[] = [
+    { name: 'primary (gemini-1.5-flash-latest)', model: primaryModel },
+    { name: 'fallback (gemini-1.5-pro-latest)', model: fallbackModel },
+    { name: 'tertiary (gemini-1.0-pro)', model: tertiaryModel },
+  ];
 
-    await handleSuccessfulConversion(isEffectivelyAnonymous, user);
-    const totalTokens = (extractionResult.tokenUsage?.totalTokens || 0) + (transformationResult.tokenUsage?.totalTokens || 0);
-    return {
-      standardizedData: transformationResult.standardizedData,
-      totalTokens,
-    };
-  } catch (primaryError) {
-    console.log(
-      'Attempt 1 (primary) failed:',
-      primaryError instanceof Error ? primaryError.message : 'Unknown error'
-    );
+  for (const { name, model } of modelsToTry) {
+    try {
+      console.log(`Attempt: Using ${name} model...`);
+      const extractionResult = await extractDataFromPdf(
+        { pdfDataUri: validatedInput.data.pdfDataUri },
+        { model }
+      );
+      const transformationResult = await transformExtractedData(
+        { extractedData: extractionResult.extractedData },
+        { model }
+      );
+      if (!transformationResult.standardizedData) {
+        throw new Error(`Model (${name}) failed to transform data.`);
+      }
+
+      await handleSuccessfulConversion(isEffectivelyAnonymous, user);
+      const totalTokens = (extractionResult.tokenUsage?.totalTokens || 0) + (transformationResult.tokenUsage?.totalTokens || 0);
+      return {
+        standardizedData: transformationResult.standardizedData,
+        totalTokens,
+      };
+    } catch (error) {
+      console.log(
+        `Attempt with ${name} failed:`,
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+    }
   }
 
-  // --- Secondary Fallback Attempt ---
-  try {
-    console.log('Attempt 2: Using fallback model (gemini-1.5-pro-latest)...');
-    const fallbackExtractionResult = await extractDataFromPdf(
-      { pdfDataUri: validatedInput.data.pdfDataUri },
-      { model: fallbackModel }
-    );
-    const fallbackTransformationResult = await transformExtractedData(
-      { extractedData: fallbackExtractionResult.extractedData },
-      { model: fallbackModel }
-    );
-    if (!fallbackTransformationResult.standardizedData)
-      throw new Error('Fallback model failed to transform data.');
-    
-    await handleSuccessfulConversion(isEffectivelyAnonymous, user);
-    const totalTokens = (fallbackExtractionResult.tokenUsage?.totalTokens || 0) + (fallbackTransformationResult.tokenUsage?.totalTokens || 0);
-    return {
-      standardizedData: fallbackTransformationResult.standardizedData,
-      totalTokens,
-    };
-  } catch (fallbackError) {
-    console.log(
-      'Attempt 2 (fallback) failed:',
-      fallbackError instanceof Error ? fallbackError.message : 'Unknown error'
-    );
-  }
-
-  // --- Tertiary Fallback Attempt ---
-  try {
-    console.log('Attempt 3: Using tertiary model (gemini-1.0-pro)...');
-    const tertiaryExtractionResult = await extractDataFromPdf(
-      { pdfDataUri: validatedInput.data.pdfDataUri },
-      { model: tertiaryModel }
-    );
-    const tertiaryTransformationResult = await transformExtractedData(
-      { extractedData: tertiaryExtractionResult.extractedData },
-      { model: tertiaryModel }
-    );
-    if (!tertiaryTransformationResult.standardizedData)
-      throw new Error('Tertiary model failed to transform data.');
-    
-    await handleSuccessfulConversion(isEffectivelyAnonymous, user);
-    const totalTokens = (tertiaryExtractionResult.tokenUsage?.totalTokens || 0) + (tertiaryTransformationResult.tokenUsage?.totalTokens || 0);
-    return {
-      standardizedData: tertiaryTransformationResult.standardizedData,
-      totalTokens,
-    };
-  } catch (tertiaryError) {
-    console.error(
-      'All conversion methods failed (primary, fallback, and tertiary).',
-      tertiaryError
-    );
-    const errorMessage =
-      tertiaryError instanceof Error
-        ? tertiaryError.message
-        : 'An unknown error occurred during conversion.';
-    return {
-      error: `The service is currently overloaded, and all backup conversion methods also failed. Please try again later. Details: ${errorMessage}`,
-    };
-  }
+  console.error('All conversion methods failed.');
+  return {
+    error: 'The service is currently overloaded or the document is unreadable. All backup methods failed. Please try again later.',
+  };
 }
 
 
@@ -262,7 +227,7 @@ export async function sendInvites(input: z.infer<typeof sendInviteSchema>) {
   if (!validatedInput.success) {
     throw new Error(
       'Invalid input: ' +
-        JSON.stringify(validatedInput.error.flatten().fieldErrors)
+      JSON.stringify(validatedInput.error.flatten().fieldErrors)
     );
   }
 
@@ -308,14 +273,13 @@ export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
   const { email, password, firstName, lastName, referralCode } =
     validatedInput.data;
 
-  // Sign up the user via the client SDK to get a session
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
         full_name: `${firstName} ${lastName}`.trim(),
-        referral_code: referralCode, // Pass referral code to trigger
+        referral_code: referralCode,
       },
     },
   });
@@ -324,8 +288,6 @@ export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
     return { error: authError.message };
   }
 
-  // The on_auth_user_created trigger will handle inserting into sc_users.
-  // We still need to handle awarding credit to the referrer, which the trigger can't do.
   if (authData.user && referralCode) {
     try {
       const { error: rpcError } = await supabaseAdmin.rpc(
@@ -334,7 +296,6 @@ export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
       );
       if (rpcError) {
         console.error('Failed to award referral credit:', rpcError);
-        // Non-critical error, don't block signup
       }
     } catch (e) {
       console.error('Exception awarding referral credit:', e);
@@ -351,8 +312,10 @@ export async function getUserCreditInfo(
 
   if (!user) {
     if (supabaseAdmin) {
-      const headersList = headers();
-      const ipAddress = headersList.get('x-forwarded-for') ?? '127.0.0.1';
+      const ipAddress = await getIpAddress();
+      if (!ipAddress) {
+        return '1 page remaining';
+      }
       const ipHash = createHash('sha256').update(ipAddress).digest('hex');
       const twentyFourHoursAgo = new Date(
         Date.now() - 24 * 60 * 60 * 1000
@@ -362,7 +325,7 @@ export async function getUserCreditInfo(
         .from('sc_anonymous_usage')
         .select('id', { count: 'exact', head: true })
         .eq('ip_hash', ipHash)
-        .gt('created_at', twentyFourHoursAgo);
+        .gt('last_conversion_at', twentyFourHoursAgo);
 
       if (error) {
         console.error('Error checking anonymous usage for header:', error);
@@ -387,7 +350,6 @@ export async function getUserCreditInfo(
 
   if (error || !userProfile) {
     console.error('Error fetching user profile for header:', error);
-    // Return a default for registered users if profile is not found yet
     return '5 pages remaining';
   }
 

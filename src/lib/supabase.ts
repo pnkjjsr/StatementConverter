@@ -9,6 +9,8 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
+// Added for debugging to ensure the service key is being loaded.
+
 if (!supabaseUrl || supabaseUrl === 'YOUR_SUPABASE_URL' || supabaseUrl === 'YOUR_SAPABASE_URL') { // Also checking for the typo from previous version
   supabaseError = "Missing Supabase URL. The application will not function correctly without it."
 } else if (!supabaseAnonKey || supabaseAnonKey === 'YOUR_SUPABASE_ANON_KEY' || supabaseAnonKey === 'YOUR_SAPABASE_ANON_KEY') {
@@ -24,6 +26,9 @@ if (!supabaseUrl || supabaseUrl === 'YOUR_SUPABASE_URL' || supabaseUrl === 'YOUR
                     persistSession: false
                 }
             });
+            console.log('[Supabase Admin Debug] Supabase admin client initialized.');
+        } else {
+            console.log('[Supabase Admin Debug] Supabase admin client NOT initialized. Service key is missing, invalid, or is the placeholder.');
         }
     } catch (error) {
         supabaseError = `Invalid Supabase URL format: ${supabaseUrl}. Please ensure it is a valid HTTP/HTTPS URL from your Supabase project settings.`

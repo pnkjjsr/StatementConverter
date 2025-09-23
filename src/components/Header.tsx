@@ -24,8 +24,7 @@ import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
 import { AuthModal } from "./AuthModal";
 import { PricingModal } from "./PricingModal";
 import { Badge } from "./ui/badge";
-import { getUserCreditInfo } from "@/lib/actions";
-import { useAnonymousUsage } from "@/context/AnonymousUsageContext";
+import CreditInfo from "./CreditInfo";
 
 
 export function Header() {
@@ -35,17 +34,6 @@ export function Header() {
   const [authModalView, setAuthModalView] = useState<"login" | "signup">("login");
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [creditInfo, setCreditInfo] = useState<string>("1 page remaining");
-  const { anonymousCreations, setAnonymousCreations } = useAnonymousUsage();
-
-  const updateCreditInfo = useCallback(async (currentUser: SupabaseUser | null) => {
-    const info = await getUserCreditInfo(currentUser);
-    setCreditInfo(info);
-    if (!currentUser) {
-        const remaining = parseInt(info.split(" ")[0]);
-        setAnonymousCreations(isNaN(remaining) ? 0 : remaining);
-    }
-  }, [setAnonymousCreations]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -57,29 +45,21 @@ export function Header() {
       (_event, session) => {
         const currentUser = session?.user ?? null;
         setUser(currentUser);
-        updateCreditInfo(currentUser);
       }
     );
 
-    const fetchInitialData = async () => {
+    const fetchInitialUser = async () => {
         const { data: { session } } = await supabase.auth.getSession();
         const currentUser = session?.user ?? null;
         setUser(currentUser);
-        await updateCreditInfo(currentUser);
     };
-    fetchInitialData();
+    fetchInitialUser();
     
     return () => {
       window.removeEventListener("scroll", handleScroll);
       authListener?.subscription.unsubscribe();
     };
-  }, [updateCreditInfo]);
-
-  useEffect(() => {
-      if (!user) {
-          setCreditInfo(`${anonymousCreations} page${anonymousCreations === 1 ? '' : 's'} remaining`);
-      }
-  }, [anonymousCreations, user]);
+  }, []);
 
   const handleAuthModalOpen = (view: "login" | "signup") => {
     setAuthModalView(view);
@@ -96,14 +76,13 @@ export function Header() {
     if (!supabase) return;
     await supabase.auth.signOut();
     setUser(null);
-    updateCreditInfo(null);
   };
 
   const userInitial = user?.user_metadata?.full_name?.charAt(0).toUpperCase() ?? user?.email?.charAt(0).toUpperCase() ?? '?';
 
   const authLinks = (
     <>
-      <Badge variant="outline" className="border-primary text-primary">{creditInfo}</Badge>
+      <Badge variant="outline" className="border-primary text-primary"><CreditInfo /></Badge>
       <button onClick={handlePricingModalOpen} className="text-gray-600 hover:text-primary transition-colors">Pricing</button>
       <button onClick={() => handleAuthModalOpen("login")} className="text-gray-600 hover:text-primary transition-colors">Login</button>
       <button onClick={() => handleAuthModalOpen("signup")} className={cn("px-4 py-2 text-sm text-primary border border-primary rounded-full hover:bg-primary hover:text-white transition-colors")}>Sign Up</button>
@@ -112,7 +91,7 @@ export function Header() {
 
   const userMenu = (
     <div className="flex items-center gap-4">
-      <Badge variant="outline" className="border-primary text-primary">{creditInfo}</Badge>
+      <Badge variant="outline" className="border-primary text-primary"><CreditInfo /></Badge>
       <button onClick={handlePricingModalOpen} className="hidden sm:block text-gray-600 hover:text-primary transition-colors">Pricing</button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
