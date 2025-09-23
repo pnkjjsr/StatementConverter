@@ -1,3 +1,4 @@
+
 // src/ai/flows/extract-data-from-pdf.ts
 'use server';
 
@@ -62,8 +63,7 @@ const extractDataFromPdfFlow = ai.defineFlow(
     outputSchema: ExtractDataFromPdfOutputSchema,
   },
   async (input, options) => {
-    const modelToUse = options?.model || ai.getModel();
-    const result = await extractDataFromPdfPrompt(input, { model: modelToUse });
+    const result = await extractDataFromPdfPrompt(input, { model: options?.model });
     const output = result.output;
 
     if (!output) {

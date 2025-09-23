@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -69,8 +70,7 @@ const transformExtractedDataFlow = ai.defineFlow(
     outputSchema: TransformExtractedDataOutputSchema,
   },
   async (input, options) => {
-    const modelToUse = options?.model || ai.getModel();
-    const result = await transformExtractedDataPrompt(input, { model: modelToUse });
+    const result = await transformExtractedDataPrompt(input, { model: options?.model });
     const output = result.output;
     if (!output) {
         return {
