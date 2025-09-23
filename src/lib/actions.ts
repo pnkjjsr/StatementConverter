@@ -124,7 +124,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
         totalTokens: (extractionResult.tokenUsage?.totalTokens || 0) + (transformationResult.tokenUsage?.totalTokens || 0),
     };
   } catch (primaryError) {
-    console.warn("Primary model conversion failed, attempting fallback.", primaryError);
+    console.warn("Primary model conversion failed. Attempting fallback with gemini-1.5-pro-latest.", primaryError);
 
     // --- Secondary Fallback Attempt ---
     try {
@@ -141,7 +141,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
             totalTokens: (fallbackExtractionResult.tokenUsage?.totalTokens || 0) + (fallbackTransformationResult.tokenUsage?.totalTokens || 0),
         };
     } catch (fallbackError) {
-       console.warn("Fallback model conversion also failed, attempting tertiary.", fallbackError);
+       console.warn("Fallback model conversion also failed. Attempting tertiary with gemini-1.0-pro.", fallbackError);
 
         // --- Tertiary Fallback Attempt ---
         try {
