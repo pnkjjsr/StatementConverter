@@ -85,7 +85,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       return { error: "You must be logged in to perform this action." };
   }
 
-  const handleSuccessfulConversion = async (totalTokens: number) => {
+  const handleSuccessfulConversion = async () => {
     if (isEffectivelyAnonymous) {
       if(supabaseAdmin) {
         const headersList = headers();
@@ -108,57 +108,41 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       }
     }
   };
-
-  // Attempt 1: Primary Model
+  
+  // --- Primary Attempt ---
   try {
-    let totalTokens = 0;
     const extractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: primaryModel });
-    totalTokens += extractionResult.tokenUsage?.totalTokens || 0;
-    
     if (!extractionResult.extractedData) throw new Error("Primary model failed to extract data.");
 
     const transformationResult = await transformExtractedData({ extractedData: extractionResult.extractedData }, { model: primaryModel });
-    totalTokens += transformationResult.tokenUsage?.totalTokens || 0;
-
     if (!transformationResult.standardizedData) throw new Error("Primary model failed to transform data.");
+    
+    await handleSuccessfulConversion();
 
-    await handleSuccessfulConversion(totalTokens);
     return {
         standardizedData: transformationResult.standardizedData,
-        totalTokens: totalTokens,
+        totalTokens: (extractionResult.tokenUsage?.totalTokens || 0) + (transformationResult.tokenUsage?.totalTokens || 0),
     };
   } catch (primaryError) {
-    console.warn("Primary model conversion failed. Attempting fallback.", primaryError);
+    console.warn("Primary model conversion failed, attempting fallback.", primaryError);
 
-    // Check if the error is a quota error
-    const errorMessage = primaryError instanceof Error ? primaryError.message : String(primaryError);
-    if (!errorMessage.includes("429")) {
-        // If it's not a quota error, fail fast.
-        return { error: `Conversion process failed: ${errorMessage}` };
-    }
-
-    // Attempt 2: Fallback Model
+    // --- Fallback Attempt ---
     try {
-        let totalTokens = 0;
         const fallbackExtractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: fallbackModel });
-        totalTokens += fallbackExtractionResult.tokenUsage?.totalTokens || 0;
-
         if (!fallbackExtractionResult.extractedData) throw new Error("Fallback model failed to extract data.");
 
         const fallbackTransformationResult = await transformExtractedData({ extractedData: fallbackExtractionResult.extractedData }, { model: fallbackModel });
-        totalTokens += fallbackTransformationResult.tokenUsage?.totalTokens || 0;
-
         if (!fallbackTransformationResult.standardizedData) throw new Error("Fallback model failed to transform data.");
-        
-        await handleSuccessfulConversion(totalTokens);
+
+        await handleSuccessfulConversion();
+
         return {
             standardizedData: fallbackTransformationResult.standardizedData,
-            totalTokens: totalTokens,
+            totalTokens: (fallbackExtractionResult.tokenUsage?.totalTokens || 0) + (fallbackTransformationResult.tokenUsage?.totalTokens || 0),
         };
     } catch (fallbackError) {
        console.error("Fallback conversion process also failed:", fallbackError);
-       const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : "An unknown error occurred.";
-       
+       const errorMessage = primaryError instanceof Error ? primaryError.message : "An unknown error occurred during conversion.";
        return { error: `The service is currently overloaded, and the backup conversion method also failed. Please try again later. Details: ${errorMessage}`};
     }
   }
@@ -337,3 +321,5 @@ export async function getUserCreditInfo(userFromClient?: User | null): Promise<s
             return `${userProfile.credits ?? 0} pages remaining`;
     }
 }
+
+    
