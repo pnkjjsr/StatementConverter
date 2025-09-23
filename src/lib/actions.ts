@@ -97,28 +97,13 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   const isEffectivelyAnonymous = validatedInput.data.isAnonymous || !user;
 
   if (isEffectivelyAnonymous) {
-    if (!supabaseAdmin) {
-      return { error: 'Application is not configured for usage tracking.' };
-    }
-    const ipAddress = await getIpAddress();
-    if (!ipAddress) {
-        return { error: 'Could not verify usage limits due to a server configuration issue.' };
-    }
-    const ipHash = createHash('sha256').update(ipAddress).digest('hex');
-    const twentyFourHoursAgo = new Date(
-      Date.now() - 24 * 60 * 60 * 1000
-    ).toISOString();
-    const { count, error: usageError } = await supabaseAdmin
-      .from('sc_anonymous_usage')
-      .select('id', { count: 'exact', head: true })
-      .eq('ip_hash', ipHash)
-      .gt('last_conversion_at', twentyFourHoursAgo);
-    if (usageError) console.error('Error checking anonymous usage:', usageError);
-    else if (count !== null && count > 0)
+    const credits = await getUserCreditInfo();
+    if (parseInt(credits, 10) <= 0) {
       return {
         error:
           'You have reached the free conversion limit for today. Please create an account to convert more documents.',
       };
+    }
   } else if (user) {
     if (!supabaseAdmin)
       return { error: 'Application is not configured for user management.' };
@@ -166,7 +151,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
         totalTokens,
       };
     } catch (error) {
-      console.log(
+      console.warn(
         `Attempt with ${name} failed:`,
         error instanceof Error ? error.message : 'Unknown error'
       );
@@ -322,23 +307,36 @@ export async function getUserCreditInfo(
         return '1';
       }
       const ipHash = createHash('sha256').update(ipAddress).digest('hex');
-      const twentyFourHoursAgo = new Date(
-        Date.now() - 24 * 60 * 60 * 1000
-      ).toISOString();
-
-      const { count, error } = await supabaseAdmin
+      
+      const { data, error } = await supabaseAdmin
         .from('sc_anonymous_usage')
-        .select('id', { count: 'exact', head: true })
+        .select('last_conversion_at')
         .eq('ip_hash', ipHash)
-        .gt('last_conversion_at', twentyFourHoursAgo);
+        .order('last_conversion_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (error) {
         console.error('Error checking anonymous usage for header:', error.message || JSON.stringify(error));
         // Fail open to allow a conversion if the check fails.
         return '1';
       }
-      // If count is greater than 0, the user has already converted a file in the last 24 hours.
-      return count !== null && count > 0 ? '0' : '1';
+
+      if (!data || !data.last_conversion_at) {
+        // No record found, so they have 1 credit.
+        return '1';
+      }
+
+      const lastConversionDate = new Date(data.last_conversion_at);
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      if (lastConversionDate > twentyFourHoursAgo) {
+        // The last conversion was within the last 24 hours.
+        return '0';
+      } else {
+        // The last conversion was more than 24 hours ago.
+        return '1';
+      }
     }
     // Default to allowing 1 conversion if Supabase admin is not available.
     return '1';
@@ -355,7 +353,7 @@ export async function getUserCreditInfo(
     .single();
 
   if (error || !userProfile) {
-    console.error('Error fetching user profile for header:', error);
+    console.error('Error fetching user profile for header:', error?.message || JSON.stringify(error));
     return '5 pages remaining';
   }
 
