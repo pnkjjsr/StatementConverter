@@ -68,7 +68,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   }
 
   const user = await getServerUser();
-  const isEffectivelyAnonymous = validatedInput.data.isAnonymous || !user;
+  let isEffectivelyAnonymous = validatedInput.data.isAnonymous || !user;
 
   if (isEffectivelyAnonymous) {
       if (!supabaseAdmin) {
@@ -111,7 +111,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   } else {
     // This handles the case where isAnonymous is false but we can't find a user.
     // We treat them as anonymous instead of throwing an error for a smoother UX.
-    isEffectivelyAnonymous;
+    isEffectivelyAnonymous = true;
   }
 
   try {
