@@ -9,7 +9,6 @@ import { cookies, headers } from "next/headers";
 import { createClient, type User } from "@supabase/supabase-js";
 import { createHash } from 'crypto';
 import { primaryModel, fallbackModel } from "@/ai/genkit";
-import type { Model } from "genkit/model";
 
 async function getServerUser(): Promise<User | null> {
     const cookieStore = cookies();
@@ -33,32 +32,6 @@ const convertPdfSchema = z.object({
   pdfDataUri: z.string().startsWith("data:application/pdf;base64,"),
   isAnonymous: z.boolean(),
 });
-
-async function attemptConversion(pdfDataUri: string, modelToUse: Model<any, any>) {
-    let totalTokens = 0;
-
-    const extractionResult = await extractDataFromPdf({ pdfDataUri }, { model: modelToUse });
-    if (!extractionResult || !extractionResult.extractedData) {
-      throw new Error("AI failed to extract any data from the PDF. The document might be empty, unreadable, or image-based.");
-    }
-    if (extractionResult.tokenUsage) {
-        totalTokens += extractionResult.tokenUsage.totalTokens;
-    }
-
-    const transformationResult = await transformExtractedData({ extractedData: extractionResult.extractedData }, { model: modelToUse });
-    if (!transformationResult || !transformationResult.standardizedData) {
-      throw new Error("AI failed to format the extracted data. The data might be in an unusual format.");
-    }
-    if (transformationResult.tokenUsage) {
-        totalTokens += transformationResult.tokenUsage.totalTokens;
-    }
-
-    return { 
-        standardizedData: transformationResult.standardizedData,
-        totalTokens: totalTokens,
-    };
-}
-
 
 export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   const validatedInput = convertPdfSchema.safeParse(input);
@@ -109,21 +82,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       return { error: "You have no more credits. Please upgrade your plan to convert more documents." };
     }
   } else {
-    // This case happens if isAnonymous is false but we can't find a user. Treat as anonymous.
-    const headersList = headers();
-    const ipAddress = headersList.get("x-forwarded-for") ?? '127.0.0.1';
-    const ipHash = createHash('sha256').update(ipAddress).digest('hex');
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-    const { count } = await supabaseAdmin
-      .from('sc_anonymous_usage')
-      .select('id', { count: 'exact', head: true })
-      .eq('ip_hash', ipHash)
-      .gt('created_at', twentyFourHoursAgo);
-
-    if (count !== null && count > 0) {
-      return { error: "You have reached the free conversion limit for today. Please create an account to convert more documents."};
-    }
+      return { error: "You must be logged in to perform this action." };
   }
 
   const handleSuccessfulConversion = async () => {
@@ -151,9 +110,25 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   };
 
   try {
-    const result = await attemptConversion(validatedInput.data.pdfDataUri, primaryModel);
+    // Attempt with primary model
+    let totalTokens = 0;
+    const extractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: primaryModel });
+    if (!extractionResult || !extractionResult.extractedData) {
+      throw new Error("AI failed to extract any data from the PDF with the primary model.");
+    }
+    totalTokens += extractionResult.tokenUsage?.totalTokens || 0;
+
+    const transformationResult = await transformExtractedData({ extractedData: extractionResult.extractedData }, { model: primaryModel });
+    if (!transformationResult || !transformationResult.standardizedData) {
+      throw new Error("AI failed to format the extracted data with the primary model.");
+    }
+    totalTokens += transformationResult.tokenUsage?.totalTokens || 0;
+
     await handleSuccessfulConversion();
-    return result;
+    return {
+        standardizedData: transformationResult.standardizedData,
+        totalTokens: totalTokens,
+    };
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
@@ -161,9 +136,25 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
     if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
       console.warn("Primary model quota exceeded. Attempting fallback.");
       try {
-        const fallbackResult = await attemptConversion(validatedInput.data.pdfDataUri, fallbackModel);
+        // Attempt with fallback model
+        let totalTokens = 0;
+        const fallbackExtractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: fallbackModel });
+        if (!fallbackExtractionResult || !fallbackExtractionResult.extractedData) {
+            throw new Error("AI failed to extract any data from the PDF with the fallback model.");
+        }
+        totalTokens += fallbackExtractionResult.tokenUsage?.totalTokens || 0;
+
+        const fallbackTransformationResult = await transformExtractedData({ extractedData: fallbackExtractionResult.extractedData }, { model: fallbackModel });
+        if (!fallbackTransformationResult || !fallbackTransformationResult.standardizedData) {
+            throw new Error("AI failed to format the extracted data with the fallback model.");
+        }
+        totalTokens += fallbackTransformationResult.tokenUsage?.totalTokens || 0;
+        
         await handleSuccessfulConversion();
-        return fallbackResult;
+        return {
+            standardizedData: fallbackTransformationResult.standardizedData,
+            totalTokens: totalTokens,
+        };
       } catch (fallbackError) {
          console.error("Fallback conversion process failed:", fallbackError);
          const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : "An unknown error occurred.";
@@ -171,7 +162,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       }
     }
 
-    console.error("Conversion process failed:", error);
+    console.error("Initial conversion process failed:", error);
     if (error instanceof Error) {
         if (error.message.includes("503") || error.message.toLowerCase().includes("model is overloaded")) {
             return { error: "The AI model is currently overloaded. Please try again in a few moments." };
