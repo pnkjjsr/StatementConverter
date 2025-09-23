@@ -8,11 +8,11 @@ import { supabase, supabaseAdmin } from "./supabase";
 import { cookies, headers } from "next/headers";
 import { createClient, type User } from "@supabase/supabase-js";
 import { createHash } from 'crypto';
-
+import { primaryModel, fallbackModel } from "@/ai/genkit";
+import type { Model } from "genkit/model";
 
 async function getServerUser(): Promise<User | null> {
     const cookieStore = cookies();
-    // This client is safe to use on the server because it uses the user's cookie.
     const client = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -29,11 +29,36 @@ async function getServerUser(): Promise<User | null> {
     return user;
 }
 
-
 const convertPdfSchema = z.object({
   pdfDataUri: z.string().startsWith("data:application/pdf;base64,"),
   isAnonymous: z.boolean(),
 });
+
+async function attemptConversion(pdfDataUri: string, model: Model<any, any>) {
+    let totalTokens = 0;
+
+    const extractionResult = await extractDataFromPdf({ pdfDataUri }, { model });
+    if (!extractionResult || !extractionResult.extractedData) {
+      throw new Error("AI failed to extract any data from the PDF. The document might be empty, unreadable, or image-based.");
+    }
+    if (extractionResult.tokenUsage) {
+        totalTokens += extractionResult.tokenUsage.totalTokens;
+    }
+
+    const transformationResult = await transformExtractedData({ extractedData: extractionResult.extractedData }, { model });
+    if (!transformationResult || !transformationResult.standardizedData) {
+      throw new Error("AI failed to format the extracted data. The data might be in an unusual format.");
+    }
+    if (transformationResult.tokenUsage) {
+        totalTokens += transformationResult.tokenUsage.totalTokens;
+    }
+
+    return { 
+        standardizedData: transformationResult.standardizedData,
+        totalTokens: totalTokens,
+    };
+}
+
 
 export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   const validatedInput = convertPdfSchema.safeParse(input);
@@ -63,7 +88,6 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       
       if (usageError) {
         console.error("Error checking anonymous usage:", usageError);
-        // Allow conversion if usage check fails, to not block user.
       } else if (count !== null && count > 0) {
         return { error: "You have reached the free conversion limit for today. Please create an account to convert more documents."};
       }
@@ -85,40 +109,14 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       return { error: "You have no more credits. Please upgrade your plan to convert more documents." };
     }
   } else {
-    // This case handles if isAnonymous is false but we can't find a user.
-    // We treat them as anonymous instead of throwing an error.
+    // This handles the case where isAnonymous is false but we can't find a user.
+    // We treat them as anonymous instead of throwing an error for a smoother UX.
     isEffectivelyAnonymous;
   }
 
   try {
-    let totalTokens = 0;
-
-    // Step 1: Extract data from the PDF
-    const extractionResult = await extractDataFromPdf({
-      pdfDataUri: validatedInput.data.pdfDataUri,
-    });
-
-    if (!extractionResult || !extractionResult.extractedData) {
-      throw new Error("AI failed to extract any data from the PDF. The document might be empty, unreadable, or image-based.");
-    }
+    const result = await attemptConversion(validatedInput.data.pdfDataUri, primaryModel);
     
-    if (extractionResult.tokenUsage) {
-        totalTokens += extractionResult.tokenUsage.totalTokens;
-    }
-
-    // Step 2: Transform the extracted data
-    const transformationResult = await transformExtractedData({
-      extractedData: extractionResult.extractedData,
-    });
-
-    if (!transformationResult || !transformationResult.standardizedData) {
-      throw new Error("AI failed to format the extracted data. The data might be in an unusual format.");
-    }
-    
-    if (transformationResult.tokenUsage) {
-        totalTokens += transformationResult.tokenUsage.totalTokens;
-    }
-
     // If conversion was successful, handle credit/usage update
     if (isEffectivelyAnonymous) {
       if(supabaseAdmin) {
@@ -148,17 +146,43 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
         }
       }
     }
+    return result;
 
-    return { 
-        standardizedData: transformationResult.standardizedData,
-        totalTokens: totalTokens,
-    };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    
+    // Check if the error is a quota error
+    if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
+      console.warn("Primary model quota exceeded. Attempting fallback.");
+      try {
+        // Retry with the fallback model
+        const fallbackResult = await attemptConversion(validatedInput.data.pdfDataUri, fallbackModel);
+        // We don't need to re-handle the credit/usage update logic here as it's outside the try-catch for the main attempt
+         if (isEffectivelyAnonymous) {
+          if(supabaseAdmin) {
+            const headersList = headers();
+            const ipAddress = headersList.get("x-forwarded-for") ?? '127.0.0.1';
+            const ipHash = createHash('sha256').update(ipAddress).digest('hex');
+            const { error: insertError } = await supabaseAdmin.from('sc_anonymous_usage').insert({ ip_hash: ipHash });
+            if (insertError) console.error('Failed to log anonymous usage on fallback:', insertError);
+          }
+        } else if (user && supabaseAdmin) {
+           const { data: userProfile } = await supabaseAdmin.from('sc_users').select('plan').eq('id', user.id).single();
+           if (userProfile && userProfile.plan === 'Free') {
+             const { error: decrementError } = await supabaseAdmin.rpc('decrement_credits', { p_user_id: user.id });
+             if (decrementError) console.error("Failed to decrement credits on fallback:", decrementError);
+           }
+        }
+        return fallbackResult;
+      } catch (fallbackError) {
+         console.error("Fallback conversion process failed:", fallbackError);
+         const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : "An unknown error occurred.";
+         return { error: `The service is currently overloaded, and the backup conversion method also failed. Please try again later. Details: ${fallbackErrorMessage}` };
+      }
+    }
+
     console.error("Conversion process failed:", error);
     if (error instanceof Error) {
-        if (error.message.includes("429") || error.message.toLowerCase().includes("quota")) {
-            return { error: "Our service is currently experiencing very high demand, and we've reached our daily processing limit. Please try again tomorrow. For higher limits, please consider our paid plans." };
-        }
         if (error.message.includes("503") || error.message.toLowerCase().includes("model is overloaded")) {
             return { error: "The AI model is currently overloaded. Please try again in a few moments." };
         }

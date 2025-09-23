@@ -11,6 +11,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import type { Model } from 'genkit/model';
 
 const ExtractDataFromPdfInputSchema = z.object({
   pdfDataUri: z
@@ -33,8 +34,8 @@ const ExtractDataFromPdfOutputSchema = z.object({
 });
 export type ExtractDataFromPdfOutput = z.infer<typeof ExtractDataFromPdfOutputSchema>;
 
-export async function extractDataFromPdf(input: ExtractDataFromPdfInput): Promise<ExtractDataFromPdfOutput> {
-  return extractDataFromPdfFlow(input);
+export async function extractDataFromPdf(input: ExtractDataFromPdfInput, options?: { model: Model<any, any> }): Promise<ExtractDataFromPdfOutput> {
+  return extractDataFromPdfFlow(input, options);
 }
 
 const extractDataFromPdfPrompt = ai.definePrompt({
@@ -60,8 +61,9 @@ const extractDataFromPdfFlow = ai.defineFlow(
     inputSchema: ExtractDataFromPdfInputSchema,
     outputSchema: ExtractDataFromPdfOutputSchema,
   },
-  async input => {
-    const result = await extractDataFromPdfPrompt(input);
+  async (input, options) => {
+    const modelToUse = options?.model || ai.getModel();
+    const result = await extractDataFromPdfPrompt(input, { model: modelToUse });
     const output = result.output;
 
     if (!output) {

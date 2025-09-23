@@ -10,6 +10,8 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import type { Model } from 'genkit/model';
+
 
 const TransformExtractedDataInputSchema = z.object({
   extractedData: z
@@ -37,9 +39,10 @@ export type TransformExtractedDataOutput = z.infer<
 >;
 
 export async function transformExtractedData(
-  input: TransformExtractedDataInput
+  input: TransformExtractedDataInput,
+  options?: { model: Model<any, any> }
 ): Promise<TransformExtractedDataOutput> {
-  return transformExtractedDataFlow(input);
+  return transformExtractedDataFlow(input, options);
 }
 
 const transformExtractedDataPrompt = ai.definePrompt({
@@ -65,8 +68,9 @@ const transformExtractedDataFlow = ai.defineFlow(
     inputSchema: TransformExtractedDataInputSchema,
     outputSchema: TransformExtractedDataOutputSchema,
   },
-  async input => {
-    const result = await transformExtractedDataPrompt(input);
+  async (input, options) => {
+    const modelToUse = options?.model || ai.getModel();
+    const result = await transformExtractedDataPrompt(input, { model: modelToUse });
     const output = result.output;
     if (!output) {
         return {
