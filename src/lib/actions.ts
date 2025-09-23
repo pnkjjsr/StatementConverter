@@ -333,7 +333,7 @@ export async function getUserCreditInfo(
         .gt('last_conversion_at', twentyFourHoursAgo);
 
       if (error) {
-        console.error('Error checking anonymous usage for header:', JSON.stringify(error, null, 2));
+        console.error('Error checking anonymous usage for header:', error.message || JSON.stringify(error));
         // Fail open to allow a conversion if the check fails.
         return '1';
       }
