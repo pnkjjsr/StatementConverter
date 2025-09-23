@@ -45,8 +45,6 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   const user = await getServerUser();
   const isEffectivelyAnonymous = validatedInput.data.isAnonymous || !user;
 
-
-  // Check limits BEFORE conversion
   if (isEffectivelyAnonymous) {
       if (!supabaseAdmin) {
         return { error: "Application is not configured for usage tracking." };
@@ -55,10 +53,9 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       const headersList = headers();
       const ipAddress = headersList.get("x-forwarded-for") ?? '127.0.0.1';
       const ipHash = createHash('sha256').update(ipAddress).digest('hex');
-
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-      const { data: recentUsage, error: usageError } = await supabaseAdmin
+      const { count, error: usageError } = await supabaseAdmin
         .from('sc_anonymous_usage')
         .select('id', { count: 'exact', head: true })
         .eq('ip_hash', ipHash)
@@ -66,9 +63,8 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       
       if (usageError) {
         console.error("Error checking anonymous usage:", usageError);
-      }
-      
-      if (recentUsage && recentUsage.count > 0) {
+        // Allow conversion if usage check fails, to not block user.
+      } else if (count !== null && count > 0) {
         return { error: "You have reached the free conversion limit for today. Please create an account to convert more documents."};
       }
   } else if (user) {
@@ -88,8 +84,11 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
     if (userProfile.plan === 'Free' && userProfile.credits <= 0) {
       return { error: "You have no more credits. Please upgrade your plan to convert more documents." };
     }
+  } else {
+    // This case handles if isAnonymous is false but we can't find a user.
+    // Instead of throwing an error, we treat them as anonymous.
+    isEffectivelyAnonymous;
   }
-
 
   try {
     let totalTokens = 0;
@@ -149,7 +148,6 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
         }
       }
     }
-
 
     return { 
         standardizedData: transformationResult.standardizedData,
@@ -322,6 +320,7 @@ export async function getUserCreditInfo(userFromClient?: User | null): Promise<s
     
     if (error || !userProfile) {
         console.error("Error fetching user profile for header:", error);
+        // Return a default for registered users if profile is not found yet
         return "5 pages remaining"; 
     }
 

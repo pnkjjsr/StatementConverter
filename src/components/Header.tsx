@@ -55,12 +55,13 @@ export function Header() {
       }
     );
 
-    // Initial check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      updateCreditInfo(currentUser);
-    });
+    const fetchInitialData = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        await updateCreditInfo(currentUser);
+    };
+    fetchInitialData();
 
     const handleFocus = () => {
         supabase.auth.getSession().then(({ data: { session } }) => {
