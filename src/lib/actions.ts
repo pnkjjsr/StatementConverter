@@ -6,7 +6,7 @@ import { transformExtractedData } from "@/ai/flows/transform-extracted-data";
 import { z } from "zod";
 import { supabase, supabaseAdmin } from "./supabase";
 import { cookies, headers } from "next/headers";
-import { createClient, type User } from "@supabase/supabase-js";
+import { createClient, type User, type Model } from "@supabase/supabase-js";
 import { createHash } from 'crypto';
 import { primaryModel, fallbackModel, tertiaryModel } from "@/ai/genkit";
 
@@ -33,62 +33,8 @@ const convertPdfSchema = z.object({
   isAnonymous: z.boolean(),
 });
 
-export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
-  const validatedInput = convertPdfSchema.safeParse(input);
-
-  if (!validatedInput.success) {
-    return { error: "Invalid input: A valid PDF data URI is required." };
-  }
-
-  const user = await getServerUser();
-  const isEffectivelyAnonymous = validatedInput.data.isAnonymous || !user;
-  
-  let conversionSuccessful = false;
-
-  if (isEffectivelyAnonymous) {
-      if (!supabaseAdmin) {
-        return { error: "Application is not configured for usage tracking." };
-      }
-
-      const headersList = headers();
-      const ipAddress = headersList.get("x-forwarded-for") ?? '127.0.0.1';
-      const ipHash = createHash('sha256').update(ipAddress).digest('hex');
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-      const { count, error: usageError } = await supabaseAdmin
-        .from('sc_anonymous_usage')
-        .select('id', { count: 'exact', head: true })
-        .eq('ip_hash', ipHash)
-        .gt('created_at', twentyFourHoursAgo);
-      
-      if (usageError) {
-        console.error("Error checking anonymous usage:", usageError);
-      } else if (count !== null && count > 0) {
-        return { error: "You have reached the free conversion limit for today. Please create an account to convert more documents."};
-      }
-  } else if (user) {
-    if (!supabaseAdmin) {
-      return { error: "Application is not configured for user management." };
-    }
-    const { data: userProfile, error: profileError } = await supabaseAdmin
-      .from('sc_users')
-      .select('credits, plan')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError || !userProfile) {
-      return { error: "Could not retrieve user profile." };
-    }
-
-    if (userProfile.plan === 'Free' && userProfile.credits <= 0) {
-      return { error: "You have no more credits. Please upgrade your plan to convert more documents." };
-    }
-  } else {
-      return { error: "You must be logged in to perform this action." };
-  }
-
-  const handleSuccessfulConversion = async () => {
-    if (isEffectivelyAnonymous) {
+async function handleSuccessfulConversion(isAnonymous: boolean, user: User | null, tokensUsed: number) {
+    if (isAnonymous) {
       if(supabaseAdmin) {
         const headersList = headers();
         const ipAddress = headersList.get("x-forwarded-for") ?? '127.0.0.1';
@@ -109,67 +55,96 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
         if (decrementError) console.error("Failed to decrement credits:", decrementError);
       }
     }
-  };
+}
 
+
+export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
+  const validatedInput = convertPdfSchema.safeParse(input);
+
+  if (!validatedInput.success) {
+    return { error: "Invalid input: A valid PDF data URI is required." };
+  }
+
+  const user = await getServerUser();
+  const isEffectivelyAnonymous = validatedInput.data.isAnonymous || !user;
+  
+  if (isEffectivelyAnonymous) {
+      if (!supabaseAdmin) {
+        return { error: "Application is not configured for usage tracking." };
+      }
+      const headersList = headers();
+      const ipAddress = headersList.get("x-forwarded-for") ?? '127.0.0.1';
+      const ipHash = createHash('sha256').update(ipAddress).digest('hex');
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { count, error: usageError } = await supabaseAdmin
+        .from('sc_anonymous_usage')
+        .select('id', { count: 'exact', head: true })
+        .eq('ip_hash', ipHash)
+        .gt('created_at', twentyFourHoursAgo);
+      if (usageError) console.error("Error checking anonymous usage:", usageError);
+      else if (count !== null && count > 0) return { error: "You have reached the free conversion limit for today. Please create an account to convert more documents."};
+  } else if (user) {
+    if (!supabaseAdmin) return { error: "Application is not configured for user management." };
+    const { data: userProfile, error: profileError } = await supabaseAdmin.from('sc_users').select('credits, plan').eq('id', user.id).single();
+    if (profileError || !userProfile) return { error: "Could not retrieve user profile." };
+    if (userProfile.plan === 'Free' && userProfile.credits <= 0) return { error: "You have no more credits. Please upgrade your plan to convert more documents." };
+  } else {
+      return { error: "You must be logged in to perform this action." };
+  }
+
+  // --- Primary Attempt ---
   try {
-    // --- Primary Attempt ---
+    console.log("Attempt 1: Using primary model (gemini-1.5-flash-latest)...");
+    const extractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: primaryModel });
+    if (!extractionResult.extractedData) throw new Error("Primary model failed to extract data.");
+    const transformationResult = await transformExtractedData({ extractedData: extractionResult.extractedData }, { model: primaryModel });
+    if (!transformationResult.standardizedData) throw new Error("Primary model failed to transform data.");
+    
+    const totalTokens = (extractionResult.tokenUsage?.totalTokens || 0) + (transformationResult.tokenUsage?.totalTokens || 0);
+    await handleSuccessfulConversion(isEffectivelyAnonymous, user, totalTokens);
+    return {
+        standardizedData: transformationResult.standardizedData,
+        totalTokens,
+    };
+  } catch (primaryError) {
+    console.warn("Primary model failed. Attempting fallback.", primaryError);
+
+    // --- Secondary Fallback Attempt ---
     try {
-        console.log("Attempting conversion with primary model (gemini-1.5-flash-latest)...");
-        const extractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: primaryModel });
-        if (!extractionResult.extractedData) throw new Error("Primary model failed to extract data.");
+        console.log("Attempt 2: Using fallback model (gemini-1.5-pro-latest)...");
+        const fallbackExtractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: fallbackModel });
+        if (!fallbackExtractionResult.extractedData) throw new Error("Fallback model failed to extract data.");
+        const fallbackTransformationResult = await transformExtractedData({ extractedData: fallbackExtractionResult.extractedData }, { model: fallbackModel });
+        if (!fallbackTransformationResult.standardizedData) throw new Error("Fallback model failed to transform data.");
 
-        const transformationResult = await transformExtractedData({ extractedData: extractionResult.extractedData }, { model: primaryModel });
-        if (!transformationResult.standardizedData) throw new Error("Primary model failed to transform data.");
-        
-        conversionSuccessful = true;
+        const totalTokens = (fallbackExtractionResult.tokenUsage?.totalTokens || 0) + (fallbackTransformationResult.tokenUsage?.totalTokens || 0);
+        await handleSuccessfulConversion(isEffectivelyAnonymous, user, totalTokens);
         return {
-            standardizedData: transformationResult.standardizedData,
-            totalTokens: (extractionResult.tokenUsage?.totalTokens || 0) + (transformationResult.tokenUsage?.totalTokens || 0),
+            standardizedData: fallbackTransformationResult.standardizedData,
+            totalTokens,
         };
-    } catch (primaryError) {
-        console.warn("Primary model failed. Attempting fallback with gemini-1.5-pro-latest...", primaryError);
+    } catch (fallbackError) {
+        console.warn("Fallback model also failed. Attempting tertiary.", fallbackError);
 
-        // --- Secondary Fallback Attempt ---
+        // --- Tertiary Fallback Attempt ---
         try {
-            console.log("Attempting conversion with fallback model (gemini-1.5-pro-latest)...");
-            const fallbackExtractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: fallbackModel });
-            if (!fallbackExtractionResult.extractedData) throw new Error("Fallback model failed to extract data.");
+            console.log("Attempt 3: Using tertiary model (gemini-1.0-pro)...");
+            const tertiaryExtractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: tertiaryModel });
+            if (!tertiaryExtractionResult.extractedData) throw new Error("Tertiary model failed to extract data.");
+            const tertiaryTransformationResult = await transformExtractedData({ extractedData: tertiaryExtractionResult.extractedData }, { model: tertiaryModel });
+            if (!tertiaryTransformationResult.standardizedData) throw new Error("Tertiary model failed to transform data.");
 
-            const fallbackTransformationResult = await transformExtractedData({ extractedData: fallbackExtractionResult.extractedData }, { model: fallbackModel });
-            if (!fallbackTransformationResult.standardizedData) throw new Error("Fallback model failed to transform data.");
-
-            conversionSuccessful = true;
+            const totalTokens = (tertiaryExtractionResult.tokenUsage?.totalTokens || 0) + (tertiaryTransformationResult.tokenUsage?.totalTokens || 0);
+            await handleSuccessfulConversion(isEffectivelyAnonymous, user, totalTokens);
             return {
-                standardizedData: fallbackTransformationResult.standardizedData,
-                totalTokens: (fallbackExtractionResult.tokenUsage?.totalTokens || 0) + (fallbackTransformationResult.tokenUsage?.totalTokens || 0),
+                standardizedData: tertiaryTransformationResult.standardizedData,
+                totalTokens,
             };
-        } catch (fallbackError) {
-            console.warn("Fallback model also failed. Attempting tertiary with gemini-1.0-pro...", fallbackError);
-
-            // --- Tertiary Fallback Attempt ---
-            try {
-                console.log("Attempting conversion with tertiary model (gemini-1.0-pro)...");
-                const tertiaryExtractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: tertiaryModel });
-                if (!tertiaryExtractionResult.extractedData) throw new Error("Tertiary model failed to extract data.");
-
-                const tertiaryTransformationResult = await transformExtractedData({ extractedData: tertiaryExtractionResult.extractedData }, { model: tertiaryModel });
-                if (!tertiaryTransformationResult.standardizedData) throw new Error("Tertiary model failed to transform data.");
-
-                conversionSuccessful = true;
-                return {
-                    standardizedData: tertiaryTransformationResult.standardizedData,
-                    totalTokens: (tertiaryExtractionResult.tokenUsage?.totalTokens || 0) + (tertiaryTransformationResult.tokenUsage?.totalTokens || 0),
-                };
-            } catch (tertiaryError) {
-                console.error("All conversion methods failed (primary, fallback, and tertiary).", tertiaryError);
-                const errorMessage = tertiaryError instanceof Error ? tertiaryError.message : "An unknown error occurred during conversion.";
-                return { error: `The service is currently overloaded, and all backup conversion methods also failed. Please try again later. Details: ${errorMessage}`};
-            }
+        } catch (tertiaryError) {
+            console.error("All conversion methods failed (primary, fallback, and tertiary).", tertiaryError);
+            const errorMessage = tertiaryError instanceof Error ? tertiaryError.message : "An unknown error occurred during conversion.";
+            return { error: `The service is currently overloaded, and all backup conversion methods also failed. Please try again later. Details: ${errorMessage}`};
         }
-    }
-  } finally {
-      if (conversionSuccessful) {
-        await handleSuccessfulConversion();
       }
   }
 }
@@ -347,5 +322,3 @@ export async function getUserCreditInfo(userFromClient?: User | null): Promise<s
             return `${userProfile.credits ?? 0} pages remaining`;
     }
 }
-
-    

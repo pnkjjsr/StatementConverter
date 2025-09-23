@@ -129,8 +129,6 @@ export function StatementConverter({ user }: StatementConverterProps) {
             
             if (!user) {
               decrementAnonymousCreations();
-            } else {
-              window.dispatchEvent(new Event('focus')); // still need this for logged in user for now
             }
 
             toast({
