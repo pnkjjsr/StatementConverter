@@ -110,7 +110,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   };
 
   try {
-    // Attempt with primary model
+    // Attempt 1: Primary Model
     let totalTokens = 0;
     const extractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: primaryModel });
     if (!extractionResult || !extractionResult.extractedData) {
@@ -129,14 +129,11 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
         standardizedData: transformationResult.standardizedData,
         totalTokens: totalTokens,
     };
+  } catch (primaryError) {
+    console.warn("Primary model failed. Attempting fallback.", primaryError);
 
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-    
-    if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
-      console.warn("Primary model quota exceeded. Attempting fallback.");
-      try {
-        // Attempt with fallback model
+    try {
+        // Attempt 2: Fallback Model
         let totalTokens = 0;
         const fallbackExtractionResult = await extractDataFromPdf({ pdfDataUri: validatedInput.data.pdfDataUri }, { model: fallbackModel });
         if (!fallbackExtractionResult || !fallbackExtractionResult.extractedData) {
@@ -155,21 +152,17 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
             standardizedData: fallbackTransformationResult.standardizedData,
             totalTokens: totalTokens,
         };
-      } catch (fallbackError) {
-         console.error("Fallback conversion process failed:", fallbackError);
-         const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : "An unknown error occurred.";
-         return { error: `The service is currently overloaded, and the backup conversion method also failed. Please try again later. Details: ${fallbackErrorMessage}` };
-      }
-    }
+    } catch (fallbackError) {
+       console.error("Fallback conversion process also failed:", fallbackError);
+       const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : "An unknown error occurred.";
+       const primaryErrorMessage = primaryError instanceof Error ? primaryError.message : "An unknown error occurred.";
+       
+       if (primaryErrorMessage.includes("429") || fallbackErrorMessage.includes("429")) {
+           return { error: `The service is currently overloaded, and the backup conversion method also failed. Please try again later. Details: ${primaryErrorMessage}` };
+       }
 
-    console.error("Initial conversion process failed:", error);
-    if (error instanceof Error) {
-        if (error.message.includes("503") || error.message.toLowerCase().includes("model is overloaded")) {
-            return { error: "The AI model is currently overloaded. Please try again in a few moments." };
-        }
-        return { error: `Conversion process failed: ${error.message}` };
+       return { error: `The conversion failed on both primary and backup systems. Please check the file and try again. Details: ${fallbackErrorMessage}`};
     }
-    return { error: "An unknown error occurred during the conversion process. Please check the PDF file and try again." };
   }
 }
 
