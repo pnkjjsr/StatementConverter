@@ -381,8 +381,10 @@ export async function getUserCreditInfo(
         }
         if (userProfile.last_free_conversion_at) {
             const remainingTimeMessage = await getRemainingTime(userProfile.last_free_conversion_at);
-            if (remainingTimeMessage) return remainingTimeMessage;
+            if (remainingTimeMessage) {
+              return remainingTimeMessage;
+            }
         }
-      return `5 pages remaining`; // If time has passed, they get full credits back
+      return `5 pages remaining`; // If time has passed or no conversion, they get full credits back
   }
 }
