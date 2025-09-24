@@ -95,7 +95,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   }
 
   const user = await getServerUser();
-  const isEffectivelyAnonymous = validatedInput.data.isAnonymous || !user;
+  const isEffectivelyAnonymous = validatedInput.data.isAnonymous;
 
   // Perform credit check
   if (isEffectivelyAnonymous) {
