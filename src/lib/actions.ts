@@ -386,7 +386,3 @@ export async function getUserCreditInfo(
       return `5 pages remaining`; // If time has passed, they get full credits back
   }
 }
-
-    
-
-    

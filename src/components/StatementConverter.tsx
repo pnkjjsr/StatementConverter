@@ -335,7 +335,3 @@ export function StatementConverter({ user }: StatementConverterProps) {
     </>
   );
 }
-
-    
-
-    
