@@ -13,7 +13,7 @@ import type { Model } from 'genkit/model';
 
 async function getIpAddress(): Promise<string | null> {
   try {
-    const headersList = headers();
+    const headersList = await headers();
     return headersList.get('x-forwarded-for') ?? '127.0.0.1';
   } catch (error) {
     console.log('Could not get headers for IP tracking, likely a static build.');
