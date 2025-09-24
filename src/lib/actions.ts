@@ -6,7 +6,8 @@ import { transformExtractedData } from '@/ai/flows/transform-extracted-data';
 import { z } from 'zod';
 import { supabase, supabaseAdmin } from './supabase';
 import { cookies, headers } from 'next/headers';
-import { createClient, type User } from '@supabase/supabase-js';
+import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
+import type { User } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
 import { primaryModel, fallbackModel, tertiaryModel } from '@/ai/genkit';
 import type { Model } from 'genkit/model';
@@ -23,21 +24,10 @@ async function getIpAddress(): Promise<string | null> {
 
 async function getServerUser(): Promise<User | null> {
   const cookieStore = cookies();
-  const client = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        persistSession: false,
-      },
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-      },
-    }
-  );
+  const supabase = createServerActionClient({ cookies: () => cookieStore });
   const {
     data: { user },
-  } = await client.auth.getUser();
+  } = await supabase.auth.getUser();
   return user;
 }
 
@@ -382,3 +372,5 @@ export async function getUserCreditInfo(
       return '0 pages remaining';
   }
 }
+
+    
