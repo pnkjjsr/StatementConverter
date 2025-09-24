@@ -127,7 +127,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   }
 
 
-  const modelsToTry: { name: string; model: Model }[] = [
+  const modelsToTry: { name: string; model: Model<any,any> }[] = [
     { name: 'primary (gemini-1.5-flash-latest)', model: primaryModel },
     { name: 'fallback (gemini-1.5-pro-latest)', model: fallbackModel },
     { name: 'tertiary (gemini-1.0-pro)', model: tertiaryModel },
@@ -386,3 +386,5 @@ export async function getUserCreditInfo(
       return `5 pages remaining`; // If time has passed, they get full credits back
   }
 }
+
+    
