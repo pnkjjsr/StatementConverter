@@ -50,33 +50,38 @@ async function handleSuccessfulConversion(
   isAnonymous: boolean,
   user: User | null
 ) {
+  if (!supabaseAdmin) {
+    console.error('Supabase admin client not available, cannot log usage.');
+    return;
+  }
+
   if (isAnonymous) {
-    if (supabaseAdmin) {
-      const ipAddress = await getIpAddress();
-      if (!ipAddress) return;
+    const ipAddress = await getIpAddress();
+    if (!ipAddress) return;
 
-      const ipHash = createHash('sha256').update(ipAddress).digest('hex');
-      const { error: insertError } = await supabaseAdmin
-        .from('sc_anonymous_usage')
-        .insert({ ip_hash: ipHash, last_conversion_at: new Date().toISOString() });
+    const ipHash = createHash('sha256').update(ipAddress).digest('hex');
+    const { error: insertError } = await supabaseAdmin
+      .from('sc_anonymous_usage')
+      .insert({ ip_hash: ipHash, last_conversion_at: new Date().toISOString() });
 
-      if (insertError) {
-        console.error('Failed to log anonymous usage:', insertError);
-      }
+    if (insertError) {
+      console.error('Failed to log anonymous usage:', insertError);
     }
-  } else if (user && supabaseAdmin) {
+  } else if (user) {
     const { data: userProfile } = await supabaseAdmin
       .from('sc_users')
       .select('plan')
       .eq('id', user.id)
       .single();
+      
     if (userProfile && userProfile.plan === 'Free') {
       const { error: decrementError } = await supabaseAdmin.rpc(
         'decrement_credits',
         { p_user_id: user.id }
       );
-      if (decrementError)
+      if (decrementError) {
         console.error('Failed to decrement credits:', decrementError);
+      }
     }
   }
 }
@@ -91,12 +96,34 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   const user = await getServerUser();
   const isEffectivelyAnonymous = validatedInput.data.isAnonymous || !user;
 
-  const creditInfo = await getUserCreditInfo(user);
-  if (creditInfo.startsWith('0 pages')) {
+  // Perform credit check
+  if (isEffectivelyAnonymous) {
+    const creditInfo = await getUserCreditInfo(null);
+    if (creditInfo.startsWith('0 pages')) {
       return {
-          error: `You have reached the conversion limit. Please try again later or upgrade your plan.`,
+        error: `You have reached the conversion limit for anonymous users. Please create an account or try again later.`,
       };
+    }
+  } else if (user && supabaseAdmin) {
+    // This is a logged-in user
+    const { data: userProfile, error: profileError } = await supabaseAdmin
+      .from('sc_users')
+      .select('credits, plan')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error('Error fetching user profile for conversion:', profileError);
+      return { error: 'Could not verify your user account. Please try again.' };
+    }
+    
+    if (userProfile.plan === 'Free' && userProfile.credits <= 0) {
+       return {
+          error: `You have reached the conversion limit for your free account. Please upgrade your plan or wait for your credits to reset.`,
+       };
+    }
   }
+
 
   const modelsToTry: { name: string; model: Model }[] = [
     { name: 'primary (gemini-1.5-flash-latest)', model: primaryModel },
@@ -330,7 +357,8 @@ export async function getUserCreditInfo(
 
   if (error || !userProfile) {
     console.error('Error fetching user profile for header:', error?.message || JSON.stringify(error));
-    return '5 pages remaining';
+    // Provide a default for a free user if profile doesn't exist yet
+    return `5 pages remaining`;
   }
 
   switch (userProfile.plan) {
