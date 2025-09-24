@@ -68,6 +68,7 @@ async function handleSuccessfulConversion(
       console.error('Failed to log anonymous usage:', insertError);
     }
   } else if (user) {
+    // Only decrement credits for 'Free' plan users. Paid plans have different logic.
     const { data: userProfile } = await supabaseAdmin
       .from('sc_users')
       .select('plan')
@@ -99,13 +100,13 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   // Perform credit check
   if (isEffectivelyAnonymous) {
     const creditInfo = await getUserCreditInfo(null);
-    if (creditInfo.startsWith('0 pages')) {
+    if (creditInfo.startsWith('0')) { // Check if the remaining pages is 0
       return {
         error: `You have reached the conversion limit for anonymous users. Please create an account or try again later.`,
       };
     }
   } else if (user && supabaseAdmin) {
-    // This is a logged-in user
+    // This is a logged-in user, check their credits from the database
     const { data: userProfile, error: profileError } = await supabaseAdmin
       .from('sc_users')
       .select('credits, plan')
@@ -117,6 +118,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       return { error: 'Could not verify your user account. Please try again.' };
     }
     
+    // For free users, check if credits are sufficient
     if (userProfile.plan === 'Free' && userProfile.credits <= 0) {
        return {
           error: `You have reached the conversion limit for your free account. Please upgrade your plan or wait for your credits to reset.`,
@@ -146,7 +148,9 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
         throw new Error(`Model (${name}) failed to transform data.`);
       }
 
+      // This is the crucial step: handle the successful conversion *before* returning
       await handleSuccessfulConversion(isEffectivelyAnonymous, user);
+      
       const totalTokens = (extractionResult.tokenUsage?.totalTokens || 0) + (transformationResult.tokenUsage?.totalTokens || 0);
       return {
         standardizedData: transformationResult.standardizedData,

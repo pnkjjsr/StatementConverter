@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
 import { PricingModal } from "./PricingModal";
 import { useAnonymousUsage } from "@/context/AnonymousUsageContext";
+import { useRouter } from "next/navigation";
 
 type Status = "idle" | "file-selected" | "processing" | "success" | "error";
 
@@ -45,6 +46,7 @@ export function StatementConverter({ user }: StatementConverterProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { anonymousCreations, decrementAnonymousCreations } = useAnonymousUsage();
+  const router = useRouter();
 
   const handleFileChange = (selectedFile: File | null) => {
     if (selectedFile) {
@@ -138,6 +140,9 @@ export function StatementConverter({ user }: StatementConverterProps) {
             
             if (!user) {
               decrementAnonymousCreations();
+            } else {
+              // For logged-in users, refresh server components to get new credit count
+              router.refresh();
             }
 
             toast({
