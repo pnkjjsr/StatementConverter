@@ -1,24 +1,34 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { getUserCreditInfo } from '@/lib/actions';
+import { useAnonymousUsage } from '@/context/AnonymousUsageContext';
 
 export default function CreditInfo() {
   const [user, setUser] = useState<User | null>(null);
   const [creditInfo, setCreditInfo] = useState('Loading...');
+  const { anonymousCreations } = useAnonymousUsage();
+
+  const updateCreditInfo = useCallback(async (currentUser: User | null) => {
+    setCreditInfo('Loading...'); // Show loading state while fetching
+    const info = await getUserCreditInfo(currentUser);
+    setCreditInfo(info);
+  }, []);
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      updateCreditInfo(currentUser);
+    // This effect runs once on mount to get the initial user session
+    // and set up the auth state change listener.
+    const fetchInitialUser = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        updateCreditInfo(currentUser);
     };
 
-    checkUser();
+    fetchInitialUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null;
@@ -26,20 +36,26 @@ export default function CreditInfo() {
       updateCreditInfo(currentUser);
     });
 
-    // Initial load and every hour thereafter to keep the timer fresh
-    const interval = setInterval(() => updateCreditInfo(user), 1000 * 60 * 60);
-
     return () => {
       subscription.unsubscribe();
-      clearInterval(interval);
     };
-  }, [user]);
+  }, [updateCreditInfo]);
 
-  const updateCreditInfo = async (currentUser: User | null) => {
-    setCreditInfo('Loading...');
-    const info = await getUserCreditInfo(currentUser);
-    setCreditInfo(info);
-  };
+
+  useEffect(() => {
+    // This effect specifically handles updates for anonymous users
+    // when their credit count changes in the context.
+    if (!user) {
+      if (anonymousCreations > 0) {
+        setCreditInfo(`${anonymousCreations} page remaining`);
+      } else {
+        // This part needs to be smarter to show the timer if applicable
+        // For now, let's keep it simple. We can enhance this if getUserCreditInfo is updated.
+        getUserCreditInfo(null).then(setCreditInfo);
+      }
+    }
+  }, [anonymousCreations, user]);
+
 
   return <span>{creditInfo}</span>;
 }
