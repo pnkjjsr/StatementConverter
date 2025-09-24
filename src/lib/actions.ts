@@ -355,7 +355,7 @@ export async function getUserCreditInfo(
 
   const { data: userProfile, error } = await supabaseAdmin
     .from('sc_users')
-    .select('credits, plan, last_free_conversion_at')
+    .select('credits, plan')
     .eq('id', user.id)
     .single();
 
@@ -376,15 +376,9 @@ export async function getUserCreditInfo(
       return 'Custom plan';
     case 'Free':
     default:
-        if (userProfile.credits > 0) {
-            return `${userProfile.credits} pages remaining`;
-        }
-        if (userProfile.last_free_conversion_at) {
-            const remainingTimeMessage = await getRemainingTime(userProfile.last_free_conversion_at);
-            if (remainingTimeMessage) {
-              return remainingTimeMessage;
-            }
-        }
-      return `5 pages remaining`; // If time has passed or no conversion, they get full credits back
+      if (userProfile.credits > 0) {
+        return `${userProfile.credits} pages remaining`;
+      }
+      return '0 pages remaining';
   }
 }
