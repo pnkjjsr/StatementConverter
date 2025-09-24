@@ -10,6 +10,7 @@ import { useAnonymousUsage } from '@/context/AnonymousUsageContext';
 export default function CreditInfo() {
   const [user, setUser] = useState<User | null>(null);
   const [creditInfo, setCreditInfo] = useState('Loading...');
+  const [loading, setLoading] = useState(true); // State to manage initial auth check
   const { anonymousCreations } = useAnonymousUsage();
 
   const updateCreditInfo = useCallback(async (currentUser: User | null) => {
@@ -22,10 +23,12 @@ export default function CreditInfo() {
     // This effect runs once on mount to get the initial user session
     // and set up the auth state change listener.
     const fetchInitialUser = async () => {
+        setLoading(true);
         const { data: { session } } = await supabase.auth.getSession();
         const currentUser = session?.user ?? null;
         setUser(currentUser);
-        updateCreditInfo(currentUser);
+        await updateCreditInfo(currentUser);
+        setLoading(false);
     };
 
     fetchInitialUser();
@@ -33,28 +36,25 @@ export default function CreditInfo() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      updateCreditInfo(currentUser);
+      if (!loading) { // Only update if initial load is complete
+        updateCreditInfo(currentUser);
+      }
     });
 
     return () => {
       subscription.unsubscribe();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [updateCreditInfo]);
 
 
   useEffect(() => {
     // This effect specifically handles updates for anonymous users
-    // when their credit count changes in the context.
-    if (!user) {
-      if (anonymousCreations > 0) {
-        setCreditInfo(`${anonymousCreations} page remaining`);
-      } else {
-        // This part needs to be smarter to show the timer if applicable
-        // For now, let's keep it simple. We can enhance this if getUserCreditInfo is updated.
+    // when their credit count changes in the context, but only after initial load.
+    if (!user && !loading) {
         getUserCreditInfo(null).then(setCreditInfo);
-      }
     }
-  }, [anonymousCreations, user]);
+  }, [anonymousCreations, user, loading]);
 
 
   return <span>{creditInfo}</span>;

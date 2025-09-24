@@ -91,31 +91,11 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   const user = await getServerUser();
   const isEffectivelyAnonymous = validatedInput.data.isAnonymous || !user;
 
-  if (isEffectivelyAnonymous) {
-    const credits = await getUserCreditInfo();
-    if (credits.startsWith('0')) { // Check if the credit info string starts with '0'
+  const creditInfo = await getUserCreditInfo(user);
+  if (creditInfo.startsWith('0 pages')) {
       return {
-        error:
-          'You have reached the free conversion limit for today. Please create an account to convert more documents.',
+          error: `You have reached the conversion limit. Please try again later or upgrade your plan.`,
       };
-    }
-  } else if (user) {
-    if (!supabaseAdmin)
-      return { error: 'Application is not configured for user management.' };
-    const { data: userProfile, error: profileError } = await supabaseAdmin
-      .from('sc_users')
-      .select('credits, plan')
-      .eq('id', user.id)
-      .single();
-    if (profileError || !userProfile)
-      return { error: 'Could not retrieve user profile.' };
-    if (userProfile.plan === 'Free' && userProfile.credits <= 0)
-      return {
-        error:
-          'You have no more credits. Please upgrade your plan to convert more documents.',
-      };
-  } else {
-    return { error: 'You must be logged in to perform this action.' };
   }
 
   const modelsToTry: { name: string; model: Model }[] = [
@@ -289,6 +269,20 @@ export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
   return { user: authData.user, error: null };
 }
 
+async function getRemainingTime(lastConversion: string | Date): Promise<string> {
+    const lastConversionDate = new Date(lastConversion);
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    const timeSinceLastConversion = Date.now() - lastConversionDate.getTime();
+  
+    if (timeSinceLastConversion < twentyFourHours) {
+      const remainingTime = twentyFourHours - timeSinceLastConversion;
+      const hours = Math.floor(remainingTime / (1000 * 60 * 60));
+      const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
+      return `0 pages remaining (${hours}h ${minutes}m left)`;
+    }
+    return '';
+}
+
 export async function getUserCreditInfo(
   userFromClient?: User | null
 ): Promise<string> {
@@ -310,22 +304,14 @@ export async function getUserCreditInfo(
         .limit(1)
         .single();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
-        console.error('Error fetching anonymous usage for header:', error);
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+        console.error('Error checking anonymous usage:', error.message || JSON.stringify(error));
         return '1 page remaining'; // Default on error
       }
 
       if (data) {
-        const lastConversion = new Date(data.last_conversion_at);
-        const twentyFourHours = 24 * 60 * 60 * 1000;
-        const timeSinceLastConversion = Date.now() - lastConversion.getTime();
-
-        if (timeSinceLastConversion < twentyFourHours) {
-          const remainingTime = twentyFourHours - timeSinceLastConversion;
-          const hours = Math.floor(remainingTime / (1000 * 60 * 60));
-          const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
-          return `0 pages remaining (${hours}h ${minutes}m left)`;
-        }
+        const remainingTimeMessage = await getRemainingTime(data.last_conversion_at);
+        if (remainingTimeMessage) return remainingTimeMessage;
       }
       return '1 page remaining';
     }
@@ -338,7 +324,7 @@ export async function getUserCreditInfo(
 
   const { data: userProfile, error } = await supabaseAdmin
     .from('sc_users')
-    .select('credits, plan')
+    .select('credits, plan, last_free_conversion_at')
     .eq('id', user.id)
     .single();
 
@@ -358,6 +344,13 @@ export async function getUserCreditInfo(
       return 'Custom plan';
     case 'Free':
     default:
-      return `${userProfile.credits ?? 0} pages remaining`;
+        if (userProfile.credits > 0) {
+            return `${userProfile.credits} pages remaining`;
+        }
+        if (userProfile.last_free_conversion_at) {
+            const remainingTimeMessage = await getRemainingTime(userProfile.last_free_conversion_at);
+            if (remainingTimeMessage) return remainingTimeMessage;
+        }
+      return `5 pages remaining`; // If time has passed, they get full credits back
   }
 }
