@@ -85,7 +85,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   }
 
   const user = await getServerUser();
-  const isEffectivelyAnonymous = validatedInput.data.isAnonymous;
+  const isEffectivelyAnonymous = validatedInput.data.isAnonymous || !user;
 
   // Perform credit check
   if (isEffectivelyAnonymous) {
@@ -369,8 +369,7 @@ export async function getUserCreditInfo(
       if (userProfile.credits > 0) {
         return `${userProfile.credits} pages remaining`;
       }
+      // If credits are 0 or less for a Free user
       return '0 pages remaining';
   }
 }
-
-    
