@@ -23,26 +23,22 @@ async function getIpAddress(): Promise<string | null> {
 
 async function getServerUser(): Promise<User | null> {
   const cookieStore = cookies();
-  try {
-    const client = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          auth: {
-            persistSession: false,
-          },
-          cookies: {
-            getAll: () => cookieStore.getAll(),
-          },
-        }
-      );
-      const {
-        data: { user },
-      } = await client.auth.getUser();
-      return user;
-  } catch (error) {
-    return null;
-  }
+  const client = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        persistSession: false,
+      },
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+      },
+    }
+  );
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  return user;
 }
 
 const convertPdfSchema = z.object({
@@ -85,7 +81,6 @@ async function handleSuccessfulConversion(
   }
 }
 
-
 export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   const validatedInput = convertPdfSchema.safeParse(input);
 
@@ -98,7 +93,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
 
   if (isEffectivelyAnonymous) {
     const credits = await getUserCreditInfo();
-    if (parseInt(credits, 10) <= 0) {
+    if (credits.startsWith('0')) { // Check if the credit info string starts with '0'
       return {
         error:
           'You have reached the free conversion limit for today. Please create an account to convert more documents.',
@@ -122,7 +117,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   } else {
     return { error: 'You must be logged in to perform this action.' };
   }
-  
+
   const modelsToTry: { name: string; model: Model }[] = [
     { name: 'primary (gemini-1.5-flash-latest)', model: primaryModel },
     { name: 'fallback (gemini-1.5-pro-latest)', model: fallbackModel },
@@ -151,7 +146,7 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
         totalTokens,
       };
     } catch (error) {
-      console.warn(
+      console.log(
         `Attempt with ${name} failed:`,
         error instanceof Error ? error.message : 'Unknown error'
       );
@@ -302,9 +297,8 @@ export async function getUserCreditInfo(
   if (!user) {
     if (supabaseAdmin) {
       const ipAddress = await getIpAddress();
-      // If we can't get an IP for any reason, default to allowing a conversion.
       if (!ipAddress) {
-        return '1';
+        return '1 page remaining';
       }
       const ipHash = createHash('sha256').update(ipAddress).digest('hex');
       
@@ -314,32 +308,28 @@ export async function getUserCreditInfo(
         .eq('ip_hash', ipHash)
         .order('last_conversion_at', { ascending: false })
         .limit(1)
-        .maybeSingle();
+        .single();
 
-      if (error) {
-        console.error('Error checking anonymous usage for header:', error.message || JSON.stringify(error));
-        // Fail open to allow a conversion if the check fails.
-        return '1';
+      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
+        console.error('Error fetching anonymous usage for header:', error);
+        return '1 page remaining'; // Default on error
       }
 
-      if (!data || !data.last_conversion_at) {
-        // No record found, so they have 1 credit.
-        return '1';
-      }
+      if (data) {
+        const lastConversion = new Date(data.last_conversion_at);
+        const twentyFourHours = 24 * 60 * 60 * 1000;
+        const timeSinceLastConversion = Date.now() - lastConversion.getTime();
 
-      const lastConversionDate = new Date(data.last_conversion_at);
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-      if (lastConversionDate > twentyFourHoursAgo) {
-        // The last conversion was within the last 24 hours.
-        return '0';
-      } else {
-        // The last conversion was more than 24 hours ago.
-        return '1';
+        if (timeSinceLastConversion < twentyFourHours) {
+          const remainingTime = twentyFourHours - timeSinceLastConversion;
+          const hours = Math.floor(remainingTime / (1000 * 60 * 60));
+          const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
+          return `0 pages remaining (${hours}h ${minutes}m left)`;
+        }
       }
+      return '1 page remaining';
     }
-    // Default to allowing 1 conversion if Supabase admin is not available.
-    return '1';
+    return '1 page remaining';
   }
 
   if (!supabaseAdmin) {
