@@ -68,10 +68,9 @@ async function handleSuccessfulConversion(
       console.error('Failed to log anonymous usage:', insertError);
     }
   } else if (user) {
-    // Only decrement credits for 'Free' plan users. Paid plans have different logic.
     const { data: userProfile } = await supabaseAdmin
       .from('sc_users')
-      .select('plan')
+      .select('plan, credits')
       .eq('id', user.id)
       .single();
       
@@ -82,6 +81,18 @@ async function handleSuccessfulConversion(
       );
       if (decrementError) {
         console.error('Failed to decrement credits:', decrementError);
+      }
+
+      // Check if credits are now 0, and if so, set the conversion timestamp
+      if (userProfile.credits - 1 <= 0) {
+        const { error: updateError } = await supabaseAdmin
+          .from('sc_users')
+          .update({ last_conversion_at: new Date().toISOString() })
+          .eq('id', user.id);
+
+        if (updateError) {
+          console.error('Failed to set last_conversion_at for user:', updateError);
+        }
       }
     }
   }
@@ -106,7 +117,6 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       };
     }
   } else if (user && supabaseAdmin) {
-    // This is a logged-in user, check their credits from the database
     const { data: userProfile, error: profileError } = await supabaseAdmin
       .from('sc_users')
       .select('credits, plan')
@@ -118,7 +128,6 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       return { error: 'Could not verify your user account. Please try again.' };
     }
     
-    // For free users, check if credits are sufficient
     if (userProfile.plan === 'Free' && userProfile.credits <= 0) {
        return {
           error: `You have reached the conversion limit for your free account. Please upgrade your plan or wait for your credits to reset.`,
@@ -148,7 +157,6 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
         throw new Error(`Model (${name}) failed to transform data.`);
       }
 
-      // This is the crucial step: handle the successful conversion *before* returning
       await handleSuccessfulConversion(isEffectivelyAnonymous, user);
       
       const totalTokens = (extractionResult.tokenUsage?.totalTokens || 0) + (transformationResult.tokenUsage?.totalTokens || 0);
@@ -355,7 +363,7 @@ export async function getUserCreditInfo(
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
         console.error('Error checking anonymous usage:', error.message || JSON.stringify(error));
-        return '1 page remaining'; // Default on error
+        return '1 page remaining';
       }
 
       if (data) {
@@ -373,13 +381,12 @@ export async function getUserCreditInfo(
 
   const { data: userProfile, error } = await supabaseAdmin
     .from('sc_users')
-    .select('credits, plan')
+    .select('credits, plan, last_conversion_at')
     .eq('id', user.id)
     .single();
 
   if (error || !userProfile) {
     console.error('Error fetching user profile for header:', error?.message || JSON.stringify(error));
-    // Provide a default for a free user if profile doesn't exist yet
     return `5 pages remaining`;
   }
 
@@ -397,7 +404,21 @@ export async function getUserCreditInfo(
       if (userProfile.credits > 0) {
         return `${userProfile.credits} pages remaining`;
       }
-      // If credits are 0 or less for a Free user
-      return '0 pages remaining';
+      
+      if (userProfile.last_conversion_at) {
+        const remainingTimeMessage = await getRemainingTime(userProfile.last_conversion_at);
+        if (remainingTimeMessage) {
+          return remainingTimeMessage;
+        }
+      }
+      
+      // If credits are 0 and there's no recent conversion timestamp, or the time has passed.
+      // This could happen if their credits were just reset.
+      // A server function would be ideal to reset credits, but for now we can infer it.
+      if (userProfile.credits <= 0) {
+        return `0 pages remaining`;
+      }
+
+      return `${userProfile.credits} pages remaining`;
   }
 }
