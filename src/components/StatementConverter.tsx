@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useTransition, type DragEvent, useEffect } from "react";
+import { useState, useRef, useTransition, type DragEvent } from "react";
 import {
   Card,
   CardContent,
@@ -25,8 +25,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
 import { PricingModal } from "./PricingModal";
-import { useAnonymousUsage } from "@/context/AnonymousUsageContext";
-import { useRouter } from "next/navigation";
+import { useCredit } from "@/context/CreditContext";
 
 type Status = "idle" | "file-selected" | "processing" | "success" | "error";
 
@@ -45,8 +44,7 @@ export function StatementConverter({ user }: StatementConverterProps) {
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { anonymousCreations, decrementAnonymousCreations } = useAnonymousUsage();
-  const router = useRouter();
+  const { anonymousCreations, decrementAnonymousCreations, refreshUserCreditInfo } = useCredit();
 
   const handleFileChange = (selectedFile: File | null) => {
     if (selectedFile) {
@@ -141,8 +139,8 @@ export function StatementConverter({ user }: StatementConverterProps) {
             if (!user) {
               decrementAnonymousCreations();
             } else {
-              // For logged-in users, refresh server components to get new credit count
-              router.refresh();
+              // For logged-in users, trigger a client-side refresh of credit info
+              await refreshUserCreditInfo();
             }
 
             toast({

@@ -5,8 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import { FogAnimation } from "@/components/FogAnimation";
 import { Header } from "@/components/Header";
-import { AnonymousUsageProvider } from "@/context/AnonymousUsageContext";
-import { AnonymousUsageInitializer } from "@/components/AnonymousUsageInitializer";
+import { CreditProvider } from "@/context/CreditContext";
+import { CreditInitializer } from "@/components/CreditInitializer";
 import { getUserCreditInfo } from "@/lib/actions";
 
 export const metadata: Metadata = {
@@ -19,7 +19,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialAnonymousCreations = await getUserCreditInfo();
+  const initialCreditInfo = await getUserCreditInfo();
   
   return (
     <html lang="en" suppressHydrationWarning>
@@ -32,8 +32,8 @@ export default async function RootLayout({
         />
       </head>
       <body className={cn("font-body antialiased")}>
-        <AnonymousUsageProvider>
-          <AnonymousUsageInitializer initialCount={parseInt(initialAnonymousCreations, 10) || 0} />
+        <CreditProvider>
+          <CreditInitializer initialInfo={initialCreditInfo} />
           <div className="relative flex min-h-screen w-full flex-col">
             <FogAnimation />
             <Header />
@@ -51,7 +51,7 @@ export default async function RootLayout({
               </div>
             </footer>
           </div>
-        </AnonymousUsageProvider>
+        </CreditProvider>
         <Toaster />
       </body>
     </html>

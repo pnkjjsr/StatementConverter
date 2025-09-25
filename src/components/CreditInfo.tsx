@@ -4,32 +4,24 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
-import { getUserCreditInfo } from '@/lib/actions';
-import { useAnonymousUsage } from '@/context/AnonymousUsageContext';
+import { useCredit } from '@/context/CreditContext';
 
 export default function CreditInfo() {
   const [user, setUser] = useState<User | null>(null);
-  const [creditInfo, setCreditInfo] = useState('Loading...');
-  const [loading, setLoading] = useState(true);
-  const { anonymousCreations } = useAnonymousUsage();
+  const { anonymousCreations, userCreditInfo, refreshUserCreditInfo } = useCredit();
   const supabase = createSupabaseBrowserClient();
 
-  const updateCreditInfo = useCallback(async (currentUser: User | null) => {
-    setCreditInfo('Loading...');
-    const info = await getUserCreditInfo(currentUser);
-    setCreditInfo(info);
-  }, []);
+  const updateCreditInfo = useCallback(() => {
+    refreshUserCreditInfo();
+  }, [refreshUserCreditInfo]);
+
 
   useEffect(() => {
     if (!supabase) return;
 
     const fetchInitialUser = async () => {
-      setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      await updateCreditInfo(currentUser);
-      setLoading(false);
+      setUser(session?.user ?? null);
     };
 
     fetchInitialUser();
@@ -37,7 +29,7 @@ export default function CreditInfo() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      updateCreditInfo(currentUser);
+      updateCreditInfo();
     });
 
     return () => {
@@ -45,16 +37,17 @@ export default function CreditInfo() {
     };
   }, [supabase, updateCreditInfo]);
 
-
   useEffect(() => {
-    // This effect specifically handles live updates for anonymous users based on client-side context.
-    if (!user && !loading) {
-      // The back-end check is what produces the countdown string like "0 pages remaining (23h 59m left)"
-      // So we must re-fetch from the server whenever the client-side anonymous count changes.
-      getUserCreditInfo(null).then(setCreditInfo);
+    if (!user) {
+        updateCreditInfo();
     }
-  }, [anonymousCreations, user, loading]);
+  }, [anonymousCreations, user, updateCreditInfo]);
 
+  // For anonymous users, the context provides the most up-to-date info, including countdowns
+  if (!user) {
+    return <span>{userCreditInfo || 'Loading...'}</span>
+  }
 
-  return <span>{creditInfo}</span>;
+  // For logged-in users, the context's userCreditInfo is the source of truth.
+  return <span>{userCreditInfo || 'Loading...'}</span>;
 }
