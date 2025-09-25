@@ -15,6 +15,11 @@ export default function CreditInfo() {
   const supabase = createSupabaseBrowserClient();
 
   const updateCreditInfo = useCallback(async (currentUser: User | null) => {
+    // If the user is anonymous, we'll let the other useEffect handle it based on context changes
+    if (!currentUser) {
+        // Let the other effect handle it based on client-side context
+        return;
+    }
     setCreditInfo('Loading...'); // Show loading state while fetching
     const info = await getUserCreditInfo(currentUser);
     setCreditInfo(info);
@@ -38,16 +43,16 @@ export default function CreditInfo() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      if (!loading) { // Only update if initial load is complete
-        updateCreditInfo(currentUser);
-      }
+      // When auth state changes (login/logout), we should re-fetch.
+      updateCreditInfo(currentUser);
     });
 
     return () => {
       subscription.unsubscribe();
     };
+  // We only want this to run once on mount and when auth state changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [updateCreditInfo, supabase]);
+  }, [supabase]);
 
 
   useEffect(() => {
