@@ -51,9 +51,9 @@ export default function CreditInfo() {
     if (!user && !loading) {
       // The back-end check is what produces the countdown string like "0 pages remaining (23h 59m left)"
       // So we must re-fetch from the server whenever the client-side anonymous count changes.
-      updateCreditInfo(null);
+      getUserCreditInfo(null).then(setCreditInfo);
     }
-  }, [anonymousCreations, user, loading, updateCreditInfo]);
+  }, [anonymousCreations, user, loading]);
 
 
   return <span>{creditInfo}</span>;
