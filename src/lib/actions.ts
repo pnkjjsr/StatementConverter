@@ -6,7 +6,7 @@ import { transformExtractedData } from '@/ai/flows/transform-extracted-data';
 import { z } from 'zod';
 import { supabaseAdmin } from './supabase';
 import { cookies, headers } from 'next/headers';
-import { createServerActionClient } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 import type { User } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
 import { primaryModel, fallbackModel, tertiaryModel } from '@/ai/genkit';
@@ -24,7 +24,17 @@ async function getIpAddress(): Promise<string | null> {
 
 async function getServerUser(): Promise<User | null> {
   const cookieStore = cookies();
-  const supabase = createServerActionClient({ cookies: () => cookieStore });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+      },
+    }
+  );
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -243,7 +253,23 @@ const signupSchema = z.object({
 
 export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
   const cookieStore = cookies();
-  const supabase = createServerActionClient({ cookies: () => cookieStore });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options) {
+          cookieStore.set(name, value, options)
+        },
+        remove(name: string, options) {
+          cookieStore.set(name, '', options)
+        },
+      },
+    }
+  );
 
   if (!supabaseAdmin) {
     return { error: 'Supabase admin client is not configured.' };
