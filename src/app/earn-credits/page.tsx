@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseBrowserClient } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,8 +61,10 @@ export default function EarnCreditsPage() {
   const [origin, setOrigin] = useState('');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { toast } = useToast();
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
+    if (!supabase) return;
     setOrigin(window.location.origin);
 
     const checkUser = async () => {
@@ -98,7 +100,7 @@ export default function EarnCreditsPage() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [supabase]);
 
   const referralLink = referralCode ? `${origin}/?ref=${referralCode}` : '';
   const shareTitle = "Check out this awesome PDF to Excel converter!";

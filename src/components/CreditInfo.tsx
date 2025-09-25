@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseBrowserClient } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { getUserCreditInfo } from '@/lib/actions';
 import { useAnonymousUsage } from '@/context/AnonymousUsageContext';
@@ -12,6 +12,7 @@ export default function CreditInfo() {
   const [creditInfo, setCreditInfo] = useState('Loading...');
   const [loading, setLoading] = useState(true); // State to manage initial auth check
   const { anonymousCreations } = useAnonymousUsage();
+  const supabase = createSupabaseBrowserClient();
 
   const updateCreditInfo = useCallback(async (currentUser: User | null) => {
     setCreditInfo('Loading...'); // Show loading state while fetching
@@ -20,6 +21,7 @@ export default function CreditInfo() {
   }, []);
 
   useEffect(() => {
+    if (!supabase) return;
     // This effect runs once on mount to get the initial user session
     // and set up the auth state change listener.
     const fetchInitialUser = async () => {
@@ -45,7 +47,7 @@ export default function CreditInfo() {
       subscription.unsubscribe();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [updateCreditInfo]);
+  }, [updateCreditInfo, supabase]);
 
 
   useEffect(() => {

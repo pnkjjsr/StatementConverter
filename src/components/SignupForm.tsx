@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, Lock } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { supabase, supabaseError } from '@/lib/supabase';
+import { createSupabaseBrowserClient, supabaseError } from '@/lib/supabase';
 import type { Provider } from '@supabase/supabase-js';
 import { cn } from '@/lib/utils';
 import { signupWithReferral } from '@/lib/actions';
@@ -42,6 +42,7 @@ export function SignupForm({ onSwitchView, onOpenChange }: SignupFormProps) {
   const [loading, setLoading] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const { toast } = useToast();
+  const supabase = createSupabaseBrowserClient();
 
     useEffect(() => {
     if (supabaseError) {

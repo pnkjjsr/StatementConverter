@@ -1,38 +1,42 @@
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-let supabase: SupabaseClient | null = null;
 let supabaseError: string | null = null;
 let supabaseAdmin: SupabaseClient | null = null;
+let browserClient: SupabaseClient | null = null;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-// Added for debugging to ensure the service key is being loaded.
-
-if (!supabaseUrl || supabaseUrl === 'YOUR_SUPABASE_URL' || supabaseUrl === 'YOUR_SAPABASE_URL') { // Also checking for the typo from previous version
-  supabaseError = "Missing Supabase URL. The application will not function correctly without it."
-} else if (!supabaseAnonKey || supabaseAnonKey === 'YOUR_SUPABASE_ANON_KEY' || supabaseAnonKey === 'YOUR_SAPABASE_ANON_KEY') {
-    supabaseError = "Missing Supabase anon key. The application will not function correctly without it."
-} else {
-    try {
-        new URL(supabaseUrl);
-        supabase = createClient(supabaseUrl, supabaseAnonKey);
-        if (supabaseServiceKey && supabaseServiceKey !== 'YOUR_SUPABASE_SERVICE_ROLE_KEY') {
-            supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-                auth: {
-                    autoRefreshToken: false,
-                    persistSession: false
-                }
-            });
-            console.log('[Supabase Admin Debug] Supabase admin client initialized.');
-        } else {
-            console.log('[Supabase Admin Debug] Supabase admin client NOT initialized. Service key is missing, invalid, or is the placeholder.');
-        }
-    } catch (error) {
-        supabaseError = `Invalid Supabase URL format: ${supabaseUrl}. Please ensure it is a valid HTTP/HTTPS URL from your Supabase project settings.`
-    }
+if (!supabaseUrl || !supabaseAnonKey) {
+    supabaseError = "Missing Supabase URL or Anon Key. The application will not function correctly without them."
 }
 
-export { supabase, supabaseError, supabaseAdmin };
+if (supabaseServiceKey) {
+    supabaseAdmin = createClient(supabaseUrl!, supabaseServiceKey, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false
+        }
+    });
+}
+
+function createSupabaseBrowserClient() {
+    if (browserClient) {
+        return browserClient;
+    }
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+        supabaseError = "Missing Supabase URL or Anon Key for browser client.";
+        return null;
+    }
+
+    browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
+    return browserClient;
+}
+
+const supabase = createSupabaseBrowserClient();
+
+export { supabase, supabaseError, supabaseAdmin, createSupabaseBrowserClient };

@@ -19,7 +19,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
+import { createSupabaseBrowserClient } from "@/lib/supabase";
 import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
 import { AuthModal } from "./AuthModal";
 import { PricingModal } from "./PricingModal";
@@ -34,8 +34,10 @@ export function Header() {
   const [authModalView, setAuthModalView] = useState<"login" | "signup">("login");
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
+    if (!supabase) return;
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
@@ -59,7 +61,7 @@ export function Header() {
       window.removeEventListener("scroll", handleScroll);
       authListener?.subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase]);
 
   const handleAuthModalOpen = (view: "login" | "signup") => {
     setAuthModalView(view);

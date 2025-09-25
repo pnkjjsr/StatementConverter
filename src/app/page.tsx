@@ -9,13 +9,15 @@ import { HowItWorks } from "@/components/HowItWorks";
 import { Tiers } from "@/components/Tiers";
 import { Faq } from "@/components/Faq";
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseBrowserClient } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
+    if (!supabase) return;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
@@ -27,7 +29,7 @@ export default function Home() {
     return () => {
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [supabase]);
 
 
   return (

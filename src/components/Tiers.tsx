@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Check, User, UserPlus, Gem, ArrowRight } from 'lucide-react';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { AnimatedSection } from './AnimatedSection';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseBrowserClient } from '@/lib/supabase';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { AuthModal } from './AuthModal';
 import { PricingModal } from './PricingModal';
@@ -42,20 +43,22 @@ export function Tiers() {
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [authModalView, setAuthModalView] = useState<'login' | 'signup'>('signup');
     const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
+    const supabase = createSupabaseBrowserClient();
 
     useEffect(() => {
-        const { data: { subscription } } = supabase?.auth.onAuthStateChange((_event, session) => {
+        if (!supabase) return;
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setUser(session?.user ?? null);
-        }) ?? { data: { subscription: null } };
+        });
 
-        supabase?.auth.getSession().then(({ data: { session } }) => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
             setUser(session?.user ?? null);
         });
 
         return () => {
             subscription?.unsubscribe();
         };
-    }, []);
+    }, [supabase]);
 
     const handleAuthModalOpen = (view: "login" | "signup") => {
         setAuthModalView(view);
