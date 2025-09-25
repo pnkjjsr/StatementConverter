@@ -10,32 +10,26 @@ import { useAnonymousUsage } from '@/context/AnonymousUsageContext';
 export default function CreditInfo() {
   const [user, setUser] = useState<User | null>(null);
   const [creditInfo, setCreditInfo] = useState('Loading...');
-  const [loading, setLoading] = useState(true); // State to manage initial auth check
+  const [loading, setLoading] = useState(true);
   const { anonymousCreations } = useAnonymousUsage();
   const supabase = createSupabaseBrowserClient();
 
   const updateCreditInfo = useCallback(async (currentUser: User | null) => {
-    // If the user is anonymous, we'll let the other useEffect handle it based on context changes
-    if (!currentUser) {
-        // Let the other effect handle it based on client-side context
-        return;
-    }
-    setCreditInfo('Loading...'); // Show loading state while fetching
+    setCreditInfo('Loading...');
     const info = await getUserCreditInfo(currentUser);
     setCreditInfo(info);
   }, []);
 
   useEffect(() => {
     if (!supabase) return;
-    // This effect runs once on mount to get the initial user session
-    // and set up the auth state change listener.
+
     const fetchInitialUser = async () => {
-        setLoading(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        await updateCreditInfo(currentUser);
-        setLoading(false);
+      setLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      await updateCreditInfo(currentUser);
+      setLoading(false);
     };
 
     fetchInitialUser();
@@ -43,23 +37,22 @@ export default function CreditInfo() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      // When auth state changes (login/logout), we should re-fetch.
       updateCreditInfo(currentUser);
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  // We only want this to run once on mount and when auth state changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]);
 
 
   useEffect(() => {
-    // This effect specifically handles updates for anonymous users
-    // when their credit count changes in the context, but only after initial load.
+    // This effect specifically handles live updates for anonymous users based on client-side context.
     if (!user && !loading) {
-        getUserCreditInfo(null).then(setCreditInfo);
+      // The back-end check is what produces the countdown string like "0 pages remaining (23h 59m left)"
+      // So we must re-fetch from the server whenever the client-side anonymous count changes.
+      getUserCreditInfo(null).then(setCreditInfo);
     }
   }, [anonymousCreations, user, loading]);
 
