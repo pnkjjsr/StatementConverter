@@ -53,6 +53,8 @@ export function SignupForm({ onSwitchView, onOpenChange }: SignupFormProps) {
       });
     }
 
+    if (!supabase) return;
+
     // Check for referral code in URL and store it
     const urlParams = new URLSearchParams(window.location.search);
     const refCode = urlParams.get('ref');
@@ -62,7 +64,7 @@ export function SignupForm({ onSwitchView, onOpenChange }: SignupFormProps) {
     } else {
       setReferralCode(sessionStorage.getItem('referralCode'));
     }
-  }, [toast]);
+  }, [toast, supabase]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -75,7 +77,6 @@ export function SignupForm({ onSwitchView, onOpenChange }: SignupFormProps) {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!supabase) return;
     setLoading(true);
 
     const { error } = await signupWithReferral({

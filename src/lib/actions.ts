@@ -4,9 +4,9 @@
 import { extractDataFromPdf } from '@/ai/flows/extract-data-from-pdf';
 import { transformExtractedData } from '@/ai/flows/transform-extracted-data';
 import { z } from 'zod';
-import { supabase, supabaseAdmin } from './supabase';
+import { supabaseAdmin } from './supabase';
 import { cookies, headers } from 'next/headers';
-import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
+import { createServerActionClient } from '@supabase/ssr';
 import type { User } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
 import { primaryModel, fallbackModel, tertiaryModel } from '@/ai/genkit';
@@ -242,8 +242,11 @@ const signupSchema = z.object({
 });
 
 export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
-  if (!supabase || !supabaseAdmin) {
-    return { error: 'Supabase client is not configured.' };
+  const cookieStore = cookies();
+  const supabase = createServerActionClient({ cookies: () => cookieStore });
+
+  if (!supabaseAdmin) {
+    return { error: 'Supabase admin client is not configured.' };
   }
 
   const validatedInput = signupSchema.safeParse(input);
@@ -264,7 +267,6 @@ export async function signupWithReferral(input: z.infer<typeof signupSchema>) {
     options: {
       data: {
         full_name: `${firstName} ${lastName}`.trim(),
-        referral_code: referralCode,
       },
     },
   });
