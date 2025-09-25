@@ -43,8 +43,7 @@ export default function CreditInfo() {
     return () => {
       subscription.unsubscribe();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase]);
+  }, [supabase, updateCreditInfo]);
 
 
   useEffect(() => {
@@ -52,9 +51,9 @@ export default function CreditInfo() {
     if (!user && !loading) {
       // The back-end check is what produces the countdown string like "0 pages remaining (23h 59m left)"
       // So we must re-fetch from the server whenever the client-side anonymous count changes.
-      getUserCreditInfo(null).then(setCreditInfo);
+      updateCreditInfo(null);
     }
-  }, [anonymousCreations, user, loading]);
+  }, [anonymousCreations, user, loading, updateCreditInfo]);
 
 
   return <span>{creditInfo}</span>;
