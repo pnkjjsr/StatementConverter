@@ -4,7 +4,7 @@ export const tiers = {
     {
       name: 'Starter',
       // TODO: Replace with your actual Razorpay Plan ID for the Starter Monthly plan
-      razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
+      razorpay_plan_id: 'plan_RMCDNMuwcEhrza',
       price: '$15',
       priceSuffix: '/ month',
       description: 'For individuals and small projects',
@@ -14,7 +14,7 @@ export const tiers = {
     {
       name: 'Professional',
       // TODO: Replace with your actual Razorpay Plan ID for the Professional Monthly plan
-      razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
+      razorpay_plan_id: 'plan_RMCYlo3XVh2Vgq',
       price: '$30',
       priceSuffix: '/ month',
       description: 'For professionals and growing businesses',
@@ -25,7 +25,7 @@ export const tiers = {
     {
       name: 'Business',
       // TODO: Replace with your actual Razorpay Plan ID for the Business Monthly plan
-      razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
+      razorpay_plan_id: 'plan_RMCZz5kPPU2aTc',
       price: '$50',
       priceSuffix: '/ month',
       description: 'For teams and larger needs',
@@ -46,7 +46,7 @@ export const tiers = {
     {
       name: 'Starter',
       // TODO: Replace with your actual Razorpay Plan ID for the Starter Annual plan
-      razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
+      razorpay_plan_id: 'plan_RMCc09QHBPBWmm',
       price: '$90',
       priceSuffix: '/ year',
       description: 'For individuals and small projects',
@@ -56,7 +56,7 @@ export const tiers = {
     {
       name: 'Professional',
       // TODO: Replace with your actual Razorpay Plan ID for the Professional Annual plan
-      razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
+      razorpay_plan_id: 'plan_RMCd54OrzLjfJc',
       price: '$180',
       priceSuffix: '/ year',
       description: 'For professionals and growing businesses',
@@ -67,7 +67,7 @@ export const tiers = {
     {
       name: 'Business',
       // TODO: Replace with your actual Razorpay Plan ID for the Business Annual plan
-      razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
+      razorpay_plan_id: 'plan_RMCdhGn5WVLtsD',
       price: '$300',
       priceSuffix: '/ year',
       description: 'For teams and larger needs',

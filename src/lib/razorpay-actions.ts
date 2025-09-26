@@ -4,7 +4,7 @@
 import Razorpay from 'razorpay';
 import { z } from 'zod';
 import { supabaseAdmin } from './supabase';
-import { createHash } from 'crypto';
+import { createHmac } from 'crypto';
 
 const createSubscriptionSchema = z.object({
   planId: z.string(),
@@ -74,18 +74,17 @@ export async function verifyPaymentAndUpdateDB(input: z.infer<typeof verifyPayme
 
     try {
         // Step 1: Verify the signature
-        const body = razorpay_subscription_id + '|' + razorpay_payment_id;
-        const expectedSignature = createHash('sha256')
-            .update(body.toString())
-            .digest('hex');
+        // The body should be razorpay_payment_id + '|' + razorpay_subscription_id
+        // See: https://razorpay.com/docs/api/subscriptions/#step-3-verify-the-signature
+        const body = razorpay_payment_id + '|' + razorpay_subscription_id;
         
         if (!razorpayKeySecret) {
           throw new Error('Razorpay key secret is not configured for signature verification.');
         }
 
-        const hmac = createHash('sha256', razorpayKeySecret);
-        hmac.update(body.toString());
-        const generated_signature = hmac.digest('hex');
+        const generated_signature = createHmac('sha256', razorpayKeySecret)
+                                        .update(body.toString())
+                                        .digest('hex');
 
         if (generated_signature !== razorpay_signature) {
             return { error: 'Payment verification failed: Invalid signature.' };
