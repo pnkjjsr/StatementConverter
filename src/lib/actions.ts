@@ -11,6 +11,7 @@ import type { User } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
 import { primaryModel, fallbackModel, tertiaryModel } from '@/ai/genkit';
 import type { Model } from 'genkit/model';
+import { createSubscription, verifyPaymentAndUpdateDB } from './razorpay-actions';
 
 async function getIpAddress(): Promise<string | null> {
   try {
@@ -422,3 +423,5 @@ export async function getUserCreditInfo(
       return `${userProfile.credits} pages remaining`;
   }
 }
+
+export { createSubscription, verifyPaymentAndUpdateDB };
