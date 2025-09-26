@@ -3,7 +3,8 @@ export const tiers = {
   monthly: [
     {
       name: 'Starter',
-      razorpay_plan_id: 'plan_starter_monthly', // REPLACE with your Razorpay Plan ID
+      // TODO: Replace with your actual Razorpay Plan ID for the Starter Monthly plan
+      razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
       price: '₹499',
       priceSuffix: '/ month',
       description: 'For individuals and small projects',
@@ -12,7 +13,8 @@ export const tiers = {
     },
     {
       name: 'Professional',
-      razorpay_plan_id: 'plan_professional_monthly', // REPLACE with your Razorpay Plan ID
+      // TODO: Replace with your actual Razorpay Plan ID for the Professional Monthly plan
+      razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
       price: '₹999',
       priceSuffix: '/ month',
       description: 'For professionals and growing businesses',
@@ -22,7 +24,8 @@ export const tiers = {
     },
     {
       name: 'Business',
-      razorpay_plan_id: 'plan_business_monthly', // REPLACE with your Razorpay Plan ID
+      // TODO: Replace with your actual Razorpay Plan ID for the Business Monthly plan
+      razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
       price: '₹2499',
       priceSuffix: '/ month',
       description: 'For teams and larger needs',
@@ -42,7 +45,8 @@ export const tiers = {
   annual: [
     {
       name: 'Starter',
-      razorpay_plan_id: 'plan_starter_annual', // REPLACE with your Razorpay Plan ID
+      // TODO: Replace with your actual Razorpay Plan ID for the Starter Annual plan
+      razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
       price: '₹4999',
       priceSuffix: '/ year',
       description: 'For individuals and small projects',
@@ -51,7 +55,8 @@ export const tiers = {
     },
     {
       name: 'Professional',
-      razorpay_plan_id: 'plan_professional_annual', // REPLACE with your Razorpay Plan ID
+      // TODO: Replace with your actual Razorpay Plan ID for the Professional Annual plan
+      razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
       price: '₹9999',
       priceSuffix: '/ year',
       description: 'For professionals and growing businesses',
@@ -61,7 +66,8 @@ export const tiers = {
     },
     {
       name: 'Business',
-      razorpay_plan_id: 'plan_business_annual', // REPLACE with your Razorpay Plan ID
+      // TODO: Replace with your actual Razorpay Plan ID for the Business Annual plan
+      razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
       price: '₹24999',
       priceSuffix: '/ year',
       description: 'For teams and larger needs',
