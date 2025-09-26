@@ -5,7 +5,7 @@ export const tiers = {
       name: 'Starter',
       // TODO: Replace with your actual Razorpay Plan ID for the Starter Monthly plan
       razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
-      price: '₹499',
+      price: '$15',
       priceSuffix: '/ month',
       description: 'For individuals and small projects',
       features: ['400 pages / month', 'Email support'],
@@ -15,7 +15,7 @@ export const tiers = {
       name: 'Professional',
       // TODO: Replace with your actual Razorpay Plan ID for the Professional Monthly plan
       razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
-      price: '₹999',
+      price: '$30',
       priceSuffix: '/ month',
       description: 'For professionals and growing businesses',
       features: ['1000 pages / month', 'Priority email support', 'Access to new features'],
@@ -26,7 +26,7 @@ export const tiers = {
       name: 'Business',
       // TODO: Replace with your actual Razorpay Plan ID for the Business Monthly plan
       razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
-      price: '₹2499',
+      price: '$50',
       priceSuffix: '/ month',
       description: 'For teams and larger needs',
       features: ['4000 pages / month', 'Dedicated support', 'API access (soon)'],
@@ -47,8 +47,8 @@ export const tiers = {
       name: 'Starter',
       // TODO: Replace with your actual Razorpay Plan ID for the Starter Annual plan
       razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
-      price: '₹4999',
-      priceSuffix: '/ year',
+      price: '$12',
+      priceSuffix: '/ month',
       description: 'For individuals and small projects',
       features: ['4,800 pages / year', 'Email support'],
       cta: 'Choose Plan',
@@ -57,8 +57,8 @@ export const tiers = {
       name: 'Professional',
       // TODO: Replace with your actual Razorpay Plan ID for the Professional Annual plan
       razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
-      price: '₹9999',
-      priceSuffix: '/ year',
+      price: '$24',
+      priceSuffix: '/ month',
       description: 'For professionals and growing businesses',
       features: ['12,000 pages / year', 'Priority email support', 'Access to new features'],
       cta: 'Choose Plan',
@@ -68,8 +68,8 @@ export const tiers = {
       name: 'Business',
       // TODO: Replace with your actual Razorpay Plan ID for the Business Annual plan
       razorpay_plan_id: 'plan_REPLACE_WITH_YOUR_ID',
-      price: '₹24999',
-      priceSuffix: '/ year',
+      price: '$40',
+      priceSuffix: '/ month',
       description: 'For teams and larger needs',
       features: ['48,000 pages / year', 'Dedicated support', 'API access (soon)'],
       cta: 'Choose Plan',
