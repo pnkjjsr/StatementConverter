@@ -52,15 +52,20 @@ const transformExtractedDataPrompt = ai.definePrompt({
   output: {schema: z.object({
     standardizedData: z
       .string()
-      .describe("The extracted data, transformed into a standardized, CSV format."),
+      .describe("The extracted data, transformed into a standardized, CSV format. If the input is a single column, the output should also be a single column."),
   })},
   prompt: `You are an expert data transformation specialist.
 
-You will receive raw data extracted from a PDF document. Your task is to transform this data into a standardized CSV format that can be easily converted into an Excel spreadsheet.
+You will receive raw, semi-structured data extracted from a document. Your task is to clean and standardize this data into a perfect CSV format that can be easily used in an Excel spreadsheet.
 
-Ensure that the transformed data is well-structured, with clear columns and rows, and properly escaped for CSV.
+- Analyze the structure of the incoming data.
+- If the data represents a multi-column table, ensure it is formatted as a valid, well-structured CSV with clear columns and rows.
+- If the data is just a single column or list, format it as a single-column CSV. DO NOT invent additional columns.
+- Ensure all data is properly escaped for CSV format (e.g., handle commas within fields by quoting).
+- Clean up any artifacts or noise from the extraction process.
 
-Raw Data: {{{extractedData}}}`,
+Raw Data:
+{{{extractedData}}}`,
 });
 
 const transformExtractedDataFlow = ai.defineFlow(

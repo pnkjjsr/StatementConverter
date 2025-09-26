@@ -45,11 +45,15 @@ const extractDataFromPdfPrompt = ai.definePrompt({
   output: { schema: z.object({
     extractedData: z
       .string()
-      .describe('The extracted tabular data from the PDF statement, formatted as a CSV.'),
+      .describe('The extracted tabular data from the PDF statement, formatted as a CSV. If the data is a simple list, return a single-column CSV.'),
   })},
   prompt: `You are an expert data extraction specialist. Your task is to extract tabular data from a PDF statement provided as a data URI.
 
-  Analyze the PDF and extract all relevant tabular information, ensuring the data is accurately captured and formatted as a CSV.
+  Analyze the PDF and extract all relevant tabular information.
+  - If the document contains a multi-column table, ensure the data is accurately captured and formatted as a well-structured CSV.
+  - If the document appears to contain just a single column or a simple list of items, extract that data into a single-column CSV. Do NOT invent new columns.
+  - Pay close attention to headers and preserve them in the output.
+  - Handle various delimiters and data formats gracefully.
 
   The PDF content is provided below:
 
@@ -78,3 +82,4 @@ const extractDataFromPdfFlow = ai.defineFlow(
     };
   }
 );
+
