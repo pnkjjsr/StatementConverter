@@ -5,6 +5,7 @@ import Razorpay from 'razorpay';
 import { z } from 'zod';
 import { supabaseAdmin } from './supabase';
 import { createHmac } from 'crypto';
+import { tiers } from './tiers';
 
 const createSubscriptionSchema = z.object({
   planId: z.string(),
@@ -74,8 +75,6 @@ export async function verifyPaymentAndUpdateDB(input: z.infer<typeof verifyPayme
 
     try {
         // Step 1: Verify the signature
-        // The body should be razorpay_payment_id + '|' + razorpay_subscription_id
-        // See: https://razorpay.com/docs/api/subscriptions/#step-3-verify-the-signature
         const body = razorpay_payment_id + '|' + razorpay_subscription_id;
         
         if (!razorpayKeySecret) {
@@ -90,7 +89,7 @@ export async function verifyPaymentAndUpdateDB(input: z.infer<typeof verifyPayme
             return { error: 'Payment verification failed: Invalid signature.' };
         }
 
-        // Step 2: Signature is valid, update the database
+        // Step 2: Signature is valid, update the sc_subscriptions table
         const { data, error } = await supabaseAdmin
             .from('sc_subscriptions')
             .upsert(
@@ -114,22 +113,35 @@ export async function verifyPaymentAndUpdateDB(input: z.infer<typeof verifyPayme
             throw new Error('Failed to update your subscription status in our database.');
         }
 
-        // Step 3: Update the user's plan in the sc_users table
-        // We need to map the razorpay_plan_id back to our plan names ('Starter', 'Professional', etc.)
+        // Step 3: Update the user's plan and credits in the sc_users table
         let userPlan = 'Free';
-        if (planId.includes('starter')) userPlan = 'Starter';
-        else if (planId.includes('professional')) userPlan = 'Professional';
-        else if (planId.includes('business')) userPlan = 'Business';
+        let userCredits = 5; // Default free credits
+
+        const allTiers = [...tiers.monthly, ...tiers.annual];
+        const selectedTier = allTiers.find(t => t.razorpay_plan_id === planId);
+
+        if (selectedTier) {
+          userPlan = selectedTier.name;
+          switch (selectedTier.name) {
+            case 'Starter':
+              userCredits = 400;
+              break;
+            case 'Professional':
+              userCredits = 1000;
+              break;
+            case 'Business':
+              userCredits = 4000;
+              break;
+          }
+        }
 
         const { error: userUpdateError } = await supabaseAdmin
             .from('sc_users')
-            .update({ plan: userPlan })
+            .update({ plan: userPlan, credits: userCredits })
             .eq('id', userId);
 
         if (userUpdateError) {
             console.error('Supabase user plan update failed:', userUpdateError);
-            // This is not ideal, as the user has paid but their plan isn't updated.
-            // In a production app, you would have retry logic or a monitoring system here.
             throw new Error('Failed to update your user profile with the new plan.');
         }
 
