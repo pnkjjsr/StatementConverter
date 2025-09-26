@@ -3,9 +3,9 @@
 'use server';
 
 /**
- * @fileOverview Extracts tabular data from a PDF statement using AI.
+ * @fileOverview Extracts tabular data from a PDF statement using AI and formats it into a standardized CSV.
  *
- * - extractDataFromPdf - A function that accepts a PDF data URI and returns the extracted tabular data.
+ * - extractDataFromPdf - A function that accepts a PDF data URI and returns the extracted and standardized tabular data as a CSV.
  * - ExtractDataFromPdfInput - The input type for the extractDataFromPdf function.
  * - ExtractDataFromPdfOutput - The return type for the extractDataFromPdf function.
  */
@@ -24,9 +24,9 @@ const ExtractDataFromPdfInputSchema = z.object({
 export type ExtractDataFromPdfInput = z.infer<typeof ExtractDataFromPdfInputSchema>;
 
 const ExtractDataFromPdfOutputSchema = z.object({
-  extractedData: z
+  standardizedData: z
     .string()
-    .describe('The extracted tabular data from the PDF statement.'),
+    .describe('The extracted and standardized tabular data from the PDF statement, formatted as a CSV.'),
   tokenUsage: z.object({
     inputTokens: z.number(),
     outputTokens: z.number(),
@@ -43,21 +43,23 @@ const extractDataFromPdfPrompt = ai.definePrompt({
   name: 'extractDataFromPdfPrompt',
   input: { schema: ExtractDataFromPdfInputSchema },
   output: { schema: z.object({
-    extractedData: z
+    standardizedData: z
       .string()
-      .describe('The extracted tabular data from the PDF statement, formatted as a CSV. If the data is a simple list, return a single-column CSV.'),
+      .describe('The extracted data, transformed into a standardized, CSV format. If the input is a single column, the output should also be a single column.'),
   })},
-  prompt: `You are an expert data extraction specialist. Your task is to extract tabular data from a PDF statement provided as a data URI.
+  prompt: `You are an expert data extraction and transformation specialist. Your task is to extract tabular data from a PDF statement and format it into a perfect, standardized CSV format suitable for Excel.
 
-  Analyze the PDF and extract all relevant tabular information.
-  - If the document contains a multi-column table, ensure the data is accurately captured and formatted as a well-structured CSV.
-  - If the document appears to contain just a single column or a simple list of items, extract that data into a single-column CSV. Do NOT invent new columns.
-  - Pay close attention to headers and preserve them in the output.
-  - Handle various delimiters and data formats gracefully.
+Analyze the PDF and extract all relevant tabular information.
+- First, determine if the document contains a multi-column table or just a simple single-column list.
+- If it's a multi-column table, ensure the data is accurately captured and formatted as a well-structured CSV. Preserve headers.
+- If it's just a single column or a simple list, extract that data into a single-column CSV. DO NOT invent new columns or data.
+- Ensure all data is properly escaped for CSV format (e.g., handle commas within fields by quoting them).
+- Clean up any artifacts, noise, or irrelevant text from the extraction process.
+- The final output must only be the clean CSV data and nothing else.
 
-  The PDF content is provided below:
+The PDF content is provided below:
 
-  {{media url=pdfDataUri}}`,
+{{media url=pdfDataUri}}`,
 });
 
 const extractDataFromPdfFlow = ai.defineFlow(
@@ -72,14 +74,13 @@ const extractDataFromPdfFlow = ai.defineFlow(
 
     if (!output) {
       return {
-        extractedData: "",
+        standardizedData: "",
       }
     }
 
     return {
-      extractedData: output.extractedData,
+      standardizedData: output.standardizedData,
       tokenUsage: result.usage,
     };
   }
 );
-

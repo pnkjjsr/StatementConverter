@@ -2,14 +2,13 @@
 'use server';
 
 import { extractDataFromPdf } from '@/ai/flows/extract-data-from-pdf';
-import { transformExtractedData } from '@/ai/flows/transform-extracted-data';
 import { z } from 'zod';
 import { supabaseAdmin } from './supabase';
 import { cookies, headers } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import type { User } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
-import { primaryModel, fallbackModel, tertiaryModel } from '@/ai/genkit';
+import { primaryModel, fallbackModel } from '@/ai/genkit';
 import type { Model } from 'genkit/model';
 import { createSubscription, verifyPaymentAndUpdateDB } from './razorpay-actions';
 
@@ -140,30 +139,25 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
   const modelsToTry: { name: string; model: Model<any,any> }[] = [
     { name: 'primary (gemini-2.5-flash-lite)', model: primaryModel },
     { name: 'fallback (gemini-2.5-flash)', model: fallbackModel },
-    { name: 'tertiary (gemini-2.5-pro)', model: tertiaryModel },
   ];
 
   for (const { name, model } of modelsToTry) {
     try {
       console.log(`Attempt: Using ${name} model...`);
-      const extractionResult = await extractDataFromPdf(
+      const result = await extractDataFromPdf(
         { pdfDataUri: validatedInput.data.pdfDataUri },
         { model }
       );
-      const transformationResult = await transformExtractedData(
-        { extractedData: extractionResult.extractedData },
-        { model }
-      );
-      if (!transformationResult.standardizedData) {
-        throw new Error(`Model (${name}) failed to transform data.`);
+      
+      if (!result.standardizedData) {
+        throw new Error(`Model (${name}) failed to produce valid data.`);
       }
 
       await handleSuccessfulConversion(isEffectivelyAnonymous, user);
       
-      const totalTokens = (extractionResult.tokenUsage?.totalTokens || 0) + (transformationResult.tokenUsage?.totalTokens || 0);
       return {
-        standardizedData: transformationResult.standardizedData,
-        totalTokens,
+        standardizedData: result.standardizedData,
+        totalTokens: result.tokenUsage?.totalTokens || 0,
       };
     } catch (error) {
       console.log(
