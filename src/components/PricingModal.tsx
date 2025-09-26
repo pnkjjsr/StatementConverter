@@ -112,6 +112,7 @@ export function PricingModal({ open, onOpenChange }: PricingModalProps) {
             subscription_id: subResult.subscriptionId,
             name: 'Bank Statement Converter',
             description: `Subscription for ${tier.name} Plan`,
+            redirect: true,
             handler: async function (response: any) {
                 try {
                     const verificationResult = await verifyPaymentAndUpdateDB({
@@ -151,6 +152,7 @@ export function PricingModal({ open, onOpenChange }: PricingModalProps) {
         };
 
         const rzp = new window.Razorpay(options);
+        onOpenChange(false);
         rzp.open();
 
     } catch (error) {
