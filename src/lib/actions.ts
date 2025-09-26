@@ -9,7 +9,7 @@ import { cookies, headers } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import type { User } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
-import { primaryModel, fallbackModel } from '@/ai/genkit';
+import { primaryModel, fallbackModel, tertiaryModel } from '@/ai/genkit';
 import type { Model } from 'genkit/model';
 import { createSubscription, verifyPaymentAndUpdateDB } from './razorpay-actions';
 
@@ -138,8 +138,9 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
 
 
   const modelsToTry: { name: string; model: Model<any,any> }[] = [
-    { name: 'primary (gemini-2.5-flash)', model: primaryModel },
-    { name: 'fallback (gemini-2.5-pro)', model: fallbackModel },
+    { name: 'primary (gemini-2.5-flash-lite)', model: primaryModel },
+    { name: 'fallback (gemini-2.5-flash)', model: fallbackModel },
+    { name: 'tertiary (gemini-2.5-pro)', model: tertiaryModel },
   ];
 
   for (const { name, model } of modelsToTry) {
