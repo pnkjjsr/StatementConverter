@@ -122,16 +122,12 @@ export async function verifyPaymentAndUpdateDB(input: z.infer<typeof verifyPayme
 
         if (selectedTier) {
           userPlan = selectedTier.name;
-          switch (selectedTier.name) {
-            case 'Starter':
-              userCredits = 400;
-              break;
-            case 'Professional':
-              userCredits = 1000;
-              break;
-            case 'Business':
-              userCredits = 4000;
-              break;
+          const pagesFeature = selectedTier.features.find(f => f.includes('pages'));
+          if (pagesFeature) {
+            const match = pagesFeature.match(/([\d,]+)/);
+            if (match) {
+              userCredits = parseInt(match[1].replace(/,/g, ''), 10);
+            }
           }
         }
 
