@@ -74,7 +74,7 @@ async function handleSuccessfulConversion(
       .eq('id', user.id)
       .single();
       
-    if (userProfile && userProfile.plan === 'Free') {
+    if (userProfile && userProfile.plan !== 'Enterprise') {
       const { error: decrementError } = await supabaseAdmin.rpc(
         'decrement_credits',
         { p_user_id: user.id }
@@ -83,8 +83,8 @@ async function handleSuccessfulConversion(
         console.error('Failed to decrement credits:', decrementError);
       }
 
-      // Check if credits are now 0, and if so, set the conversion timestamp
-      if (userProfile.credits - 1 <= 0) {
+      // Check if credits are now 0, and if so, set the conversion timestamp for Free users
+      if (userProfile.plan === 'Free' && userProfile.credits - 1 <= 0) {
         const { error: updateError } = await supabaseAdmin
           .from('sc_users')
           .update({ last_conversion_at: new Date().toISOString() })
@@ -128,9 +128,9 @@ export async function convertPdf(input: z.infer<typeof convertPdfSchema>) {
       return { error: 'Could not verify your user account. Please try again.' };
     }
     
-    if (userProfile.plan === 'Free' && userProfile.credits <= 0) {
+    if (userProfile.credits <= 0) {
        return {
-          error: `You have reached the conversion limit for your free account. Please upgrade your plan or wait for your credits to reset.`,
+          error: `You have reached your conversion limit. Please upgrade your plan or wait for your credits to reset.`,
        };
     }
   }
@@ -385,37 +385,29 @@ export async function getUserCreditInfo(
     return `5 pages remaining`;
   }
 
-  switch (userProfile.plan) {
-    case 'Starter':
-      return '400 pages/month';
-    case 'Professional':
-      return '1000 pages/month';
-    case 'Business':
-      return '4000 pages/month';
-    case 'Enterprise':
-      return 'Custom plan';
-    case 'Free':
-    default:
-      if (userProfile.credits > 0) {
-        return `${userProfile.credits} pages remaining`;
-      }
-      
-      if (userProfile.last_conversion_at) {
-        const remainingTimeMessage = await getRemainingTime(userProfile.last_conversion_at);
-        if (remainingTimeMessage) {
-          return remainingTimeMessage;
-        }
-      }
-      
-      // If credits are 0 and there's no recent conversion timestamp, or the time has passed.
-      // This could happen if their credits were just reset.
-      // A server function would be ideal to reset credits, but for now we can infer it.
-      if (userProfile.credits <= 0) {
-        return `0 pages remaining`;
-      }
-
-      return `${userProfile.credits} pages remaining`;
+  if (userProfile.plan === 'Enterprise') {
+    return 'Custom plan';
   }
+
+  if (userProfile.credits > 0) {
+    return `${userProfile.credits} pages remaining`;
+  }
+  
+  if (userProfile.plan === 'Free' && userProfile.last_conversion_at) {
+    const remainingTimeMessage = await getRemainingTime(userProfile.last_conversion_at);
+    if (remainingTimeMessage) {
+      return remainingTimeMessage;
+    }
+  }
+  
+  // If credits are 0 and there's no recent conversion timestamp, or the time has passed.
+  // A server function would be ideal to reset credits, but for now we can infer it.
+  if (userProfile.credits <= 0) {
+    // For paid users, just show 0. For Free users, it might also show the timer.
+    return `0 pages remaining`;
+  }
+
+  return `${userProfile.credits} pages remaining`;
 }
 
 export { createSubscription, verifyPaymentAndUpdateDB };
