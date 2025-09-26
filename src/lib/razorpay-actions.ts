@@ -47,9 +47,9 @@ export async function createSubscription(input: z.infer<typeof createSubscriptio
       subscriptionId: subscription.id,
       keyId: razorpay.key_id,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Razorpay subscription creation failed:', error);
-    const message = error instanceof Error ? error.message : 'An unknown error occurred.';
+    const message = error?.error?.description || error.message || 'An unknown error occurred.';
     return { error: `Could not create subscription: ${message}` };
   }
 }
@@ -75,11 +75,19 @@ export async function verifyPaymentAndUpdateDB(input: z.infer<typeof verifyPayme
     try {
         // Step 1: Verify the signature
         const body = razorpay_subscription_id + '|' + razorpay_payment_id;
-        const expectedSignature = createHash('sha256', razorpayKeySecret!)
+        const expectedSignature = createHash('sha256')
             .update(body.toString())
             .digest('hex');
+        
+        if (!razorpayKeySecret) {
+          throw new Error('Razorpay key secret is not configured for signature verification.');
+        }
 
-        if (expectedSignature !== razorpay_signature) {
+        const hmac = createHash('sha256', razorpayKeySecret);
+        hmac.update(body.toString());
+        const generated_signature = hmac.digest('hex');
+
+        if (generated_signature !== razorpay_signature) {
             return { error: 'Payment verification failed: Invalid signature.' };
         }
 
@@ -109,8 +117,6 @@ export async function verifyPaymentAndUpdateDB(input: z.infer<typeof verifyPayme
 
         // Step 3: Update the user's plan in the sc_users table
         // We need to map the razorpay_plan_id back to our plan names ('Starter', 'Professional', etc.)
-        // This is a simplification. A better approach would be to store plan names in tiers.ts
-        // or have a mapping function.
         let userPlan = 'Free';
         if (planId.includes('starter')) userPlan = 'Starter';
         else if (planId.includes('professional')) userPlan = 'Professional';
